@@ -1,0 +1,49 @@
+<doctag><text><loc_50><loc_21><loc_87><loc_36>VS</text>
+<text><loc_8><loc_84><loc_35><loc_88>Phone</text>
+<text><loc_8><loc_96><loc_65><loc_100>+91 7093902986</text>
+<text><loc_8><loc_120><loc_33><loc_125>Email</text>
+<text><loc_7><loc_132><loc_104><loc_138>Venkat.genai264@gmail.com</text>
+<section_header_level_1><loc_8><loc_157><loc_52><loc_161>Education</section_header_level_1>
+<text><loc_6><loc_169><loc_92><loc_174>Bachelor of Technology in</text>
+<text><loc_4><loc_177><loc_122><loc_182>Computer Science and Engineering</text>
+<text><loc_6><loc_189><loc_109><loc_194>Acharya Nagarjuna University</text>
+<text><loc_8><loc_212><loc_66><loc_217>Certifications</text>
+<text><loc_8><loc_225><loc_99><loc_230>Generative AI Engineer</text>
+<text><loc_8><loc_237><loc_68><loc_241>MINDX Solutions</text>
+<text><loc_8><loc_249><loc_59><loc_253>Data Science</text>
+<text><loc_8><loc_262><loc_68><loc_266>MINDX Solutions</text>
+<text><loc_8><loc_274><loc_77><loc_279>Machine Learning</text>
+<text><loc_8><loc_286><loc_68><loc_290>MINDX Solutions</text>
+<section_header_level_1><loc_179><loc_18><loc_452><loc_33>VENKAT SUNKARA</section_header_level_1>
+<section_header_level_1><loc_274><loc_42><loc_358><loc_52>AI Engineer</section_header_level_1>
+<section_header_level_1><loc_132><loc_62><loc_193><loc_67>OBJECTIVE</section_header_level_1>
+<text><loc_132><loc_70><loc_492><loc_103>Dynamic AI/ML Engineer with 3 years of experience in developing and deploying machine learning models, specializing in fine-tuning, model optimization, and advanced algorithms. Seeking to transition into a Generative AI Engineer role to leverage expertise in deep learning, RAG techniques, and scalable AI solutions. Eager to contribute to the creation of innovative generative AI applications, driving transformative advancements in the field of artificial intelligence.</text>
+<section_header_level_1><loc_132><loc_105><loc_201><loc_110>EXPERIENCE</section_header_level_1>
+<section_header_level_1><loc_132><loc_113><loc_355><loc_118>GENERATIVE AI ENGINEER, STRAIVE, UK, 2022-Present</section_header_level_1>
+<text><loc_132><loc_119><loc_492><loc_173>Worked as a Generative AI Engineer at Straive, focusing on building intelligent solutions using OpenAI, AWS Bedrock, Azure AI, and Google's Multimodal APIs. Integrated real-time APIs to enable dynamic text generation, multimodal processing, and automated decision-making. Fine-tuned domain-specific models with optimized feature engineering and preprocessing techniques. while leveraging cloud services like AWS, GCP, and Azure to build scalable AI/ML pipelines. Applied Generative AI to solve real-world problems like content generation, intelligent automation, document processing. Collaborated with crossfunctional teams to ensure AI systems aligned with business goals and user needs and deploying highperformance AI applications in production environments.</text>
+<section_header_level_1><loc_132><loc_174><loc_175><loc_178>PROJECTS</section_header_level_1>
+<text><loc_132><loc_181><loc_492><loc_186>Multimodal Chatbot: Built a chatbot capable of handling both text and image inputs using OpenAI GPT-</text>
+<text><loc_132><loc_188><loc_492><loc_200>4 Vision and integrated image processing. Enabled real-time image-text interactions and deployed on Azure with LangChain and Streamlit interface.</text>
+<text><loc_132><loc_201><loc_349><loc_207>Tech Stack: OpenAI GPT-4 Vision, LangChain, Streamlit, Azure</text>
+<text><loc_132><loc_208><loc_491><loc_227>Medical AI Agent: Developed an intelligent medical assistant capable of answering patient queries, analyzing symptoms, and summarizing medical documents using OpenAI GPT-4 and LangChain. Integrated with clinical data sources and deployed on Azure for secure and scalable access.</text>
+<text><loc_132><loc_229><loc_325><loc_234>Tech Stack: OpenAI GPT-4, LangChain, Azure, Streamlit</text>
+<text><loc_132><loc_236><loc_491><loc_248>Multilingual Q&A Chatbot: Created a document-based chatbot with multilingual support (EN/FR) using Azure OpenAI + Weaviate, deployed on GCP Vertex AI.</text>
+<text><loc_132><loc_249><loc_299><loc_255>Tech: LangChain, Weaviate, Azure OpenAI, GCP</text>
+<text><loc_132><loc_256><loc_492><loc_261><loc_132><loc_263><loc_243><loc_268>Video Subtitle Semantic Search: Designed a semantic subtitle search engine using BERT and TF-IDF to improve video content relevance.</text>
+<text><loc_132><loc_270><loc_313><loc_275>Tech: BERT, TF -IDF, FastText, Streamlit, Langserver</text>
+<section_header_level_1><loc_133><loc_277><loc_168><loc_282>SKILLS</section_header_level_1>
+<section_header_level_1><loc_132><loc_285><loc_252><loc_290>Programming Languages: Python</section_header_level_1>
+<text><loc_132><loc_292><loc_491><loc_304>Frameworks & Tools: TensorFlow, PyTorch, OpenCV, LangChain, LlamaIndex, Streamlit, Flask, NLTK, SpaCy, Hugging Face Transformers, Unsloth, Crew AI, LangGraph, N8N .</text>
+<text><loc_132><loc_305><loc_491><loc_311>Generative AI Technologies: RAGs, Supervised Fine-Tuning , PEFT, Quantization, LORA, QLORA,</text>
+<text><loc_132><loc_312><loc_491><loc_324>Transfer Learning, Zero-Shot Learning, Few-Shot Learning, Prompt Engineering, LLMs, GPT Models, Agentic AI, LLMOps .</text>
+<text><loc_132><loc_326><loc_300><loc_331>Vector Databases: ChromaDB, FAISS, Weaviate .</text>
+<text><loc_132><loc_333><loc_386><loc_338>Text Embedding Techniques: Word2Vec, FastText, ELMo, LLM modules .</text>
+<text><loc_132><loc_339><loc_491><loc_351>Text Classification & Sentiment Analysis: Multinomial Naive Bayes, Decision Trees, Random Forest, SVM, CNN, RNN, LSTM .</text>
+<text><loc_132><loc_353><loc_491><loc_364>Advanced NLP Techniques: Transformer Models (BERT, GPT), Sequence-to-Sequence Models, Attention Mechanisms .</text>
+<text><loc_132><loc_367><loc_491><loc_379>Search & Retrieval: Keyword-based Search, Semantic Search Engines, Document Chunking, Cosine Similarity</text>
+<text><loc_132><loc_380><loc_492><loc_391>Deployment Platforms: AWS Bedrock, GCP, Azure, Hugging Face Spaces, NVIDIA Deep Stream, Triton Inference Server</text>
+<text><loc_132><loc_394><loc_492><loc_406>AI/ML Techniques: Machine Learning, NLP, Deep Learning, Fine-tuning with Custom Data, Vector Embedding, Neural Network Optimization, MLOps .</text>
+<text><loc_132><loc_408><loc_491><loc_427>Computer Vision: Image Processing, Object Detection (YOLO, SSD, Faster-R-CNN), Image Segmentation (U-Net, Mask R-CNN), Human Tracking, Facial Recognition, OCR (Tesseract, EasyOCR), Real -Time Video Processing (OpenCV), Model Optimization (ONNX, TensorRT) .</text>
+<text><loc_132><loc_428><loc_491><loc_440>Data Science: Data Preprocessing, Feature Engineering, Statistical Analysis, Model Evaluation, Predictive Analytics, Data Visualization .</text>
+<text><loc_132><loc_442><loc_442><loc_454>Tools & Platforms: OpenCV, Detectron2, MediaPipe, Triton, NVIDIA Jetson, Raspberry Pi Soft Skills: Analytical Thinking, Teamwork, Effective Collaboration .</text>
+</doctag>

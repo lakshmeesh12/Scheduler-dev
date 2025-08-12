@@ -1,0 +1,65 @@
+<doctag><section_header_level_1><loc_49><loc_23><loc_152><loc_28>HARIHARA SUDHAN N</section_header_level_1>
+<text><loc_49><loc_37><loc_238><loc_44>nhsharsudhan2307@gmail.com | +91-6379375416</text>
+<section_header_level_1><loc_49><loc_51><loc_424><loc_58>https://www.linkedin.com/in/harihara-sudhan-n-75913b24a | https://github.com/Harisudhan23</section_header_level_1>
+<section_header_level_1><loc_49><loc_80><loc_143><loc_85>PROFILE SUMMARY</section_header_level_1>
+<text><loc_49><loc_94><loc_451><loc_139>Software Engineer with expertise in NLP and AI-driven automation. Proficient in Python, SQL, and Power BI for data analytics and visualization. Skilled in developing AI-powered solutions using LangChain, OpenAI, Hugging Face, and Generative AI models. Experience includes SEO analytics, prompt engineering, document digitization, and business intelligence. Passionate about leveraging AI for automation, process optimization, and data-driven decision-making.</text>
+<section_header_level_1><loc_49><loc_146><loc_107><loc_151>EDUCATION</section_header_level_1>
+<section_header_level_1><loc_49><loc_161><loc_273><loc_167>Bachelor of Engineering (B.E.) - Mechanical Engineering</section_header_level_1>
+<text><loc_49><loc_170><loc_283><loc_185>Government College of Engineering, Tirunelveli (2019 - 2023) CGPA: 7.85</text>
+<section_header_level_1><loc_49><loc_194><loc_144><loc_199>WORK EXPERIENCE</section_header_level_1>
+<section_header_level_1><loc_49><loc_208><loc_168><loc_215>Junior Software Engineer -AI</section_header_level_1>
+<section_header_level_1><loc_49><loc_222><loc_301><loc_229>Entrans Technologies, Chennai, Tamil Nadu (Oct 2024 - Present)</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_237><loc_431><loc_253> Developed AI solutions using Generative AI, LangChain, and NLP for automation and business intelligence</list_item>
+<list_item><loc_63><loc_260><loc_447><loc_267> Designed and optimized AI-powered workflows to improve process efficiency and decision-making</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_275><loc_174><loc_281>Intern Trainee - Data Analytics</section_header_level_1>
+<section_header_level_1><loc_49><loc_289><loc_322><loc_295>RIOTA Private Limited, Chennai, Tamil Nadu (Sep 2023 - May 2024)</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_303><loc_437><loc_319> Conducted data analysis and visualization using Python, Power BI, and SQL to generate business insights</list_item>
+<list_item><loc_63><loc_327><loc_401><loc_333> Automated data workflows, improving reporting efficiency and trend analysis accuracy</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_341><loc_99><loc_346>PROJECTS</section_header_level_1>
+<section_header_level_1><loc_49><loc_355><loc_222><loc_362>AI SEO Analysis Tool – SEO Blog Analyzer</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_369><loc_446><loc_385> Developed an AI-powered Blog SEO Analyzer using Python, Streamlit, BeautifulSoup, LangChain, and Google Generative AI</list_item>
+<list_item><loc_63><loc_393><loc_449><loc_400> Scraped blog content to extract text, headers, and key elements while filtering out irrelevant sections</list_item>
+<list_item><loc_63><loc_407><loc_439><loc_423> Extracted top keywords and evaluated blog SEO performance, including keyword usage and meta descriptions</list_item>
+<list_item><loc_63><loc_431><loc_353><loc_438> Assessed content quality based on grammar, engagement, and scannability</list_item>
+<list_item><loc_63><loc_445><loc_294><loc_452> Analyzed internal and external links for SEO optimization</list_item>
+<list_item><loc_63><loc_459><loc_433><loc_466> Built an interactive Streamlit dashboard to provide real-time insights and actionable suggestions</list_item>
+</unordered_list>
+<page_break>
+<section_header_level_1><loc_49><loc_23><loc_218><loc_29>AI-Driven Document Digitization Solution</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_37><loc_422><loc_53> Built an AI-driven system to extract, correct, and analyze text from scanned documents using computer vision and NLP</list_item>
+<list_item><loc_63><loc_61><loc_451><loc_75> Used OpenCV for image preprocessing, Google Cloud Vision API for text extraction, and Gemini AI for context-aware correction</list_item>
+<list_item><loc_63><loc_85><loc_444><loc_91> Implemented Levenshtein-based fuzzy search and evaluated OCR quality using CER/WER metrics</list_item>
+<list_item><loc_63><loc_99><loc_425><loc_115> Developed a Streamlit web app for document processing, enhancing digitization accuracy and efficiency</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_123><loc_254><loc_129>Pandas Data Wizard: Streamlining Data Processing</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_137><loc_367><loc_143> Ensured data uniformity and high-quality standards, focusing on data integrity</list_item>
+<list_item><loc_63><loc_151><loc_428><loc_158> Designed data transformation functionalities with attention to detail, similar to software testing</list_item>
+<list_item><loc_63><loc_165><loc_383><loc_172> Documented processes to support testing, validation, and handling data processing</list_item>
+<list_item><loc_63><loc_180><loc_364><loc_186> Enhanced the tool's capability for accurate insights through temporal analysis</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_194><loc_246><loc_200>Transaction Efficiency Analysis and Optimization</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_208><loc_388><loc_215> Assessed machine efficiency using transactional data with precision in data analysis</list_item>
+<list_item><loc_63><loc_222><loc_409><loc_229> Analyzed successful and pending transactions based on their status using Excel Functions</list_item>
+<list_item><loc_63><loc_237><loc_371><loc_243> Analyzed transaction amounts and counts per machine to evaluate performance</list_item>
+<list_item><loc_63><loc_251><loc_438><loc_257> Created a dashboard for insights and optimization of machine operations and improved efficiency</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_265><loc_142><loc_270>TECHNICAL SKILLS</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_279><loc_346><loc_286> Programming: Python (Analysis, Automation, Web Scraping, AI, NLP)</list_item>
+<list_item><loc_63><loc_293><loc_288><loc_300> Data Analytics & Visualization: Power BI, SQL, Excel</list_item>
+<list_item><loc_63><loc_308><loc_342><loc_314> AI & ML Tools: Generative AI, LangChain, Hugging Face, NLP, OCR</list_item>
+<list_item><loc_63><loc_322><loc_409><loc_328> Libraries & Frameworks: Pandas, NumPy, Matplotlib, BeautifulSoup, SpaCy, OpenCV</list_item>
+<list_item><loc_63><loc_336><loc_195><loc_343> Database: MongoDB, MySQL</list_item>
+<list_item><loc_63><loc_350><loc_251><loc_357> Developer Tools: VS Code, GitHub, Streamlit</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_365><loc_130><loc_370>CERTIFICATIONS</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_379><loc_398><loc_384> Oracle Cloud Infrastructure 2024 Generative AI Professional Certificate – Oracle</list_item>
+</unordered_list>
+<section_header_level_1><loc_49><loc_393><loc_158><loc_398>PROFESSIONAL SKILLS</section_header_level_1>
+<unordered_list><list_item><loc_63><loc_407><loc_293><loc_414> Analytical Thinking & Problem-Solving, Critical thinking</list_item>
+<list_item><loc_63><loc_422><loc_248><loc_428> Process Optimization & Business Intelligence</list_item>
+<list_item><loc_63><loc_436><loc_282><loc_442> AI-driven Automation & Data-driven Decision Making</list_item>
+<list_item><loc_63><loc_450><loc_307><loc_457> Effective Communication & Team Collaboration, Negotiation</list_item>
+</unordered_list>
+</doctag>

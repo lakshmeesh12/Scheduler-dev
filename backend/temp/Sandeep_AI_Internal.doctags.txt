@@ -1,0 +1,123 @@
+<doctag><section_header_level_1><loc_5><loc_4><loc_66><loc_12>Contact</section_header_level_1>
+<text><loc_7><loc_19><loc_37><loc_24>Phone</text>
+<section_header_level_1><loc_9><loc_26><loc_73><loc_31>+91 6362322548</section_header_level_1>
+<text><loc_9><loc_37><loc_34><loc_42><loc_8><loc_48><loc_104><loc_54>Email sandeepsah50714@gmail .</text>
+<text><loc_105><loc_50><loc_119><loc_53>com</text>
+<section_header_level_1><loc_8><loc_58><loc_41><loc_63>Github</section_header_level_1>
+<text><loc_11><loc_67><loc_147><loc_72>https://github . com/SandeepSah12</text>
+<section_header_level_1><loc_9><loc_77><loc_47><loc_90>Linkdin https://www</section_header_level_1>
+<text><loc_48><loc_89><loc_49><loc_89>.</text>
+<text><loc_49><loc_86><loc_72><loc_89>linkedin</text>
+<text><loc_73><loc_89><loc_74><loc_89>.</text>
+<text><loc_74><loc_86><loc_179><loc_90>com/in/sandeep-sah-bb9000273/</text>
+<text><loc_9><loc_98><loc_49><loc_103>Address</text>
+<text><loc_10><loc_107><loc_51><loc_113>Hyderabad ,</text>
+<text><loc_54><loc_107><loc_71><loc_112>India</text>
+<section_header_level_1><loc_6><loc_121><loc_45><loc_129>Skills .</section_header_level_1>
+<unordered_list><list_item><loc_17><loc_136><loc_155><loc_151>Programming Language : | Python | | R Programing |</list_item>
+<list_item><loc_18><loc_156><loc_91><loc_162>Databases : | SQL |</list_item>
+<list_item><loc_18><loc_169><loc_165><loc_175>Cloud : | AWS | AZURE ML | Azure Ai</list_item>
+<list_item><loc_18><loc_180><loc_184><loc_186>MLOps : | Git | GitHub | MLflow | Airflow |</list_item>
+<list_item><loc_18><loc_192><loc_135><loc_207>Data Visualization: | Tableau | | Power BI | Automated EDA |</list_item>
+<list_item><loc_18><loc_213><loc_137><loc_219>Big Data : | pyspark | Hadoop |</list_item>
+<list_item><loc_18><loc_226><loc_159><loc_277>Key skills : | Data Visualization | Predictive Analysis | Statistical Modeling | Data Preprocessing | Clustering And Classification | Time Series Analysis And Forecasting | Machine Learning | Deep Learning |</list_item>
+<list_item><loc_17><loc_283><loc_168><loc_316>Packages : | Numpy | Pandas | Matplotlib | Seaborn | Scikit-learn | Scipy | NLTK | Spacy | Mediapipe | TensorFlow | Keras | OpenCV | Flask |</list_item>
+<list_item><loc_17><loc_323><loc_155><loc_338>Statistics : | Inferential Statistics & Descriptive Statistics |</list_item>
+<list_item><loc_17><loc_344><loc_171><loc_362>Machine Learning :| Linear and logistic regression | Gradient descent |</list_item>
+<list_item><loc_17><loc_368><loc_173><loc_432>Decision Tree | Random-Forest | SVM | Naive -Bayes | KNN | Xgboost | Adaboost | Polynomial Regression | Lasso & Ridge Regression | Gini | Entropy | AUC & ROC | Clustering | Cross Validation |</list_item>
+<list_item><loc_17><loc_439><loc_166><loc_469>Deep Learning : | ANN | CNN | RNN | LSTM | Optimization Techniques | Transfer Learning | Encoders &</list_item>
+</unordered_list>
+<text><loc_18><loc_474><loc_134><loc_480>Decoders | Attention Model |</text>
+<section_header_level_1><loc_190><loc_4><loc_361><loc_21>Sandeep Sah</section_header_level_1>
+<section_header_level_1><loc_192><loc_24><loc_488><loc_45>D a t a S c i e n t i s t | M a c h i n e L e a r n i n g | A r t i f i c i a l i n t e l l i g e n c e | N L P | G E N A I</section_header_level_1>
+<section_header_level_1><loc_191><loc_52><loc_272><loc_70>Data Scientist with 3 Summary</section_header_level_1>
+<text><loc_192><loc_66><loc_491><loc_127>. 2 years of hands-on experience in Python , data analysis , machine learning , and Artificial intelligence developer , Computer vision , NLP , Generative Ai , and Agentic Ai , LLMs , GPT -4 statistical modeling . Proficient in Python , R , AWS Sagemaker , MLOps , SQL , Time series , Forecasting and data visualization tools Power BI , with a track record of delivering data-driven solutions and actionable insights . Strong problem-solving skills and the ability to communicate complex findings to both technical and non-technical stakeholders . Passionate about leveraging data to drive business decisions and optimize .</text>
+<section_header_level_1><loc_190><loc_133><loc_319><loc_143>Work Experience</section_header_level_1>
+<text><loc_195><loc_149><loc_257><loc_154>Data Scientist</text>
+<text><loc_195><loc_168><loc_235><loc_174>May 2022</text>
+<text><loc_241><loc_170><loc_244><loc_171>-</text>
+<text><loc_252><loc_168><loc_289><loc_173>Jun 2025</text>
+<section_header_level_1><loc_404><loc_168><loc_453><loc_174>( Bengaluru ,</section_header_level_1>
+<text><loc_457><loc_168><loc_476><loc_173>India</text>
+<text><loc_194><loc_159><loc_283><loc_163>Aria Aerotech Pvt Ltd</text>
+<unordered_list><list_item><loc_208><loc_180><loc_485><loc_218>Data Cleaning , Preprocessing & exploration: Prepare data for analysis , ensuring quality , consistency , and completeness by handling missing values , outliers , and transforming data . Explore and analyze large and complex datasets to identify patterns , trends , and anomalies Machine Learning Model Development</list_item>
+<list_item><loc_208><loc_220><loc_485><loc_242>Design Machine Learning , Natural Language and Decision Optimisation applications architecture . Design ML NLP and DO models algorithms for predictive & prescriptive</list_item>
+<list_item><loc_208><loc_256><loc_467><loc_266>. Perform advanced analytics and statistical modelling on structured</list_item>
+<list_item><loc_208><loc_240><loc_461><loc_258>, , analytics . Translate business requirements to reporting dashboard and analytics</list_item>
+</unordered_list>
+<text><loc_472><loc_260><loc_485><loc_265>and</text>
+<unordered_list><list_item><loc_208><loc_268><loc_462><loc_282>unstructured data . Work with software engineers to integrate and deploy AI applications</list_item>
+</unordered_list>
+<text><loc_459><loc_285><loc_485><loc_289>science</text>
+<unordered_list><list_item><loc_208><loc_280><loc_463><loc_290>. Design develop and deploy machine learning models and data</list_item>
+<list_item><loc_208><loc_288><loc_485><loc_306>, , solutions . MLOps/LLMOps platform development & automated pipelines focusing on</list_item>
+<list_item><loc_208><loc_309><loc_449><loc_322>deploying Work with large datasets preprocess and analyze data for insights</list_item>
+<list_item><loc_208><loc_328><loc_485><loc_338>. Design and implement machine learning models and Artificial intelligence</list_item>
+<list_item><loc_208><loc_320><loc_451><loc_330>, . Implement and optimize deep learning and statistical models</list_item>
+<list_item><loc_208><loc_340><loc_485><loc_362>algorithms for various use cases (e . g . , prediction , classification , NLP , computer vision) . Design and implement generative AI models (e LLMs diffusion models)</list_item>
+<list_item><loc_208><loc_358><loc_484><loc_378>. g . , , for text , image , audio , or multimodal content generation . Develop agentic AI systems capable of autonomous decision-making</list_item>
+</unordered_list>
+<text><loc_483><loc_391><loc_485><loc_392>-</text>
+<unordered_list><list_item><loc_208><loc_376><loc_485><loc_394>, planning , and tool use in complex environments . Integrate AI agents with APIs databases and external tools to enable real</list_item>
+</unordered_list>
+<text><loc_378><loc_407><loc_380><loc_408>-</text>
+<unordered_list><list_item><loc_208><loc_392><loc_485><loc_410>, , world task execution . Fine -tune foundation models for domain specific applications using</list_item>
+<list_item><loc_208><loc_413><loc_485><loc_434>techniques like RLHF , prompt engineering , and retrieval -augmented generation (RAG) . Familiarity with Ai and ML frameworks such as Tensorflow PyTroch Keras</list_item>
+<list_item><loc_208><loc_441><loc_486><loc_458>, Langgraph , AutoGPT , OpenAgents , CrewAi , Hagging Face . Deploy models to production using tools such as Docker Kubernetes or</list_item>
+<list_item><loc_208><loc_433><loc_483><loc_442>, , , Familiarity with Generative ai and Agentic ai frameworks such as Langchain</list_item>
+<list_item><loc_208><loc_457><loc_474><loc_466>, , cloud services (AWS , GCP , Azure)</list_item>
+</unordered_list>
+<section_header_level_1><loc_199><loc_473><loc_238><loc_481>Projects</section_header_level_1>
+<page_break>
+<unordered_list><list_item><loc_20><loc_1><loc_175><loc_54>Natural Language Processing : | Word Embedding | tf-idf | word2Vec | Bag of Words | Tokenization | Stemming | Lemmatization | Text Summarization | Web Scrapping | Speech Recognition</list_item>
+<list_item><loc_17><loc_63><loc_186><loc_93>Generative Ai | GAN | LLMs | GPT | ML | BERT | T5 | LANGCHAIN | Gemini-pro| | Google gemini-pro-vision | Hagging Face</list_item>
+<list_item><loc_17><loc_100><loc_181><loc_129>Agentic Ai | LangGraph | Crew Ai | Grok | Deepseek | Vertex Ai | Embeding | ChromaDB |</list_item>
+<list_item><loc_16><loc_136><loc_183><loc_166>Open Ai | Bloom | LIama2 | Falcon | DALL -E2 | ChatGPT | Whisper | GAMMA2 | Meta Ai | Gemini Ai | Llama3 |</list_item>
+<list_item><loc_17><loc_172><loc_158><loc_190>Tools : | Jupyter notebook | Google Collab | Spyder | Visual Studio |</list_item>
+<list_item><loc_18><loc_196><loc_181><loc_214>Software Skills : | MS Office | MS Word | Excel |</list_item>
+</unordered_list>
+<section_header_level_1><loc_4><loc_221><loc_78><loc_229>Education</section_header_level_1>
+<text><loc_3><loc_235><loc_164><loc_265>2018 -2022 B . TECH ( Computer Science ) 8 . 37CGPA Rajiv Gandhi Proudyogiki Vishwavidyalaya ( Bhopal )</text>
+<section_header_level_1><loc_3><loc_273><loc_118><loc_280>CERTIFICATION</section_header_level_1>
+<unordered_list><list_item><loc_19><loc_285><loc_173><loc_291>SPSS Modeler Professional V3 ( IBM )</list_item>
+<list_item><loc_19><loc_296><loc_169><loc_302>Data science Certificate by Microsoft</list_item>
+<list_item><loc_18><loc_305><loc_156><loc_321>Artificial intelligence certificate by Microsoft</list_item>
+<list_item><loc_19><loc_326><loc_164><loc_333>Machine learning certificate by IBM .</list_item>
+<list_item><loc_19><loc_336><loc_171><loc_342>image processing Certificate by Cisco .</list_item>
+</unordered_list>
+<section_header_level_1><loc_6><loc_350><loc_124><loc_369>Operating systems Microsoft Windows .</section_header_level_1>
+<text><loc_25><loc_375><loc_46><loc_380>Linux</text>
+<unordered_list><list_item><loc_47><loc_379><loc_48><loc_380>.</list_item>
+</unordered_list>
+<section_header_level_1><loc_6><loc_390><loc_65><loc_399>Language .</section_header_level_1>
+<unordered_list><list_item><loc_22><loc_402><loc_52><loc_408>English .</list_item>
+<list_item><loc_24><loc_414><loc_47><loc_419>Hindi .</list_item>
+</unordered_list>
+<section_header_level_1><loc_7><loc_429><loc_134><loc_436>Solving complex problems</section_header_level_1>
+<unordered_list><list_item><loc_21><loc_448><loc_53><loc_454>Python ,</list_item>
+<list_item><loc_21><loc_460><loc_100><loc_467>Machine Learning ,</list_item>
+<list_item><loc_21><loc_473><loc_86><loc_479>Deep Learning ,</list_item>
+<list_item><loc_23><loc_485><loc_78><loc_491>Data science</list_item>
+</unordered_list>
+<section_header_level_1><loc_199><loc_2><loc_325><loc_8>TripChain . Ai Using Agentic ai</section_header_level_1>
+<section_header_level_1><loc_200><loc_11><loc_309><loc_16>Role: Gentic Ai Researcher</section_header_level_1>
+<text><loc_201><loc_21><loc_492><loc_52>Developed an AI-powered assistant capable of interpreting natural language instructions and executing complex , multi -step tasks—such as booking flights , reserving hotels , and scheduling calendar events—by coordinating external APIs through LLM-based planning</text>
+<text><loc_490><loc_61><loc_492><loc_62>-</text>
+<text><loc_201><loc_59><loc_499><loc_80>Technologies Used: Python , Git , GitHub , Docker , LLMs , Open Ai , Gemini , GPT 4 , Grok , RAG , Langchain , LangGraph , AutoGen , Hagging Face , Vector -Embeding , GCP , Vector DB , LLMOps , Llama , AWS -bedrock , faiss -GPU , Fine -tuning , RHLF .</text>
+<section_header_level_1><loc_203><loc_91><loc_387><loc_106>Product Recommendation Using LLMs Role: Generative Ai Researcher/Scientist</section_header_level_1>
+<text><loc_202><loc_112><loc_497><loc_142>An end -to-end generative AI project is presented , focusing on building a product recommendation chatbot for e -commerce using Flipkart data . The process involves data ingestion , creating a chatbot using a large language model , and deploying the application using Docker and AWS EC2 , Speech - text - Speech</text>
+<text><loc_491><loc_150><loc_493><loc_151>-</text>
+<text><loc_202><loc_148><loc_499><loc_169>Technologies Used: Python , Git , GitHub , Docker , LLMs , Open Ai , Gemini , GPT 4 , Grok , RAG , Langchain , Hagging Face , Vector -Embeding , GCP , ChromaDB , Llama , LLMOps , AWS -bedrock , AWS EC2 , faiss -GPU , Fine -tuning , RHLF .</text>
+<section_header_level_1><loc_203><loc_181><loc_445><loc_197>Vehicle Detection & Speed Estimation using YOLO V8 Role: Computer Vision Engineer / AI Developer</section_header_level_1>
+<text><loc_203><loc_201><loc_498><loc_239>This project is an advanced Vehicle Speed Detection and Tracking System using YOLO , OpenCV , and PaddleOCR , integrated with a Django-powered dashboard for real -time monitoring . It detects vehicles from a video stream , estimates their speed , extracts number plates using OCR , and sends the data to a Django API . The data is then displayed on an interactive dashboard with analytics & Features</text>
+<text><loc_202><loc_245><loc_494><loc_259>Technologies Used: Python , numpy , Pandas , YOLO V8 , Tracker , CV2 Open CV , CNN , Speech recognition , AWS , GCP , SQL , Flask , git github</text>
+<section_header_level_1><loc_202><loc_272><loc_349><loc_287>Credit Finance Using MLops Role: Machine Learning Engineer</section_header_level_1>
+<text><loc_202><loc_292><loc_497><loc_330>The objective of this project is to develop a machine learning model that predicts whether a customer ' s loan application will be approved or not based on their financial and demographic details . By leveraging Python and machine learning techniques , we aim to create an efficient , data -driven approach to assist financial institutions in making informed lending decisions</text>
+<text><loc_476><loc_341><loc_478><loc_341>-</text>
+<text><loc_201><loc_338><loc_499><loc_361>Technologies Used: Python , Numpy , Pandas , Matplotlib , Sebron , Skit learn , Logistic Regression , Decision Trees , Random Forest , and Gradient Boosting . Git , GitHub , MLflow , SQL , AWS , Fast API , faiss -GPU .</text>
+<section_header_level_1><loc_201><loc_375><loc_338><loc_381>Sentiment Analysis Using NLP</section_header_level_1>
+<section_header_level_1><loc_201><loc_386><loc_287><loc_392>Role: NLP Engineer</section_header_level_1>
+<text><loc_200><loc_397><loc_495><loc_418>The food industry is highly competitive , and customer reviews play a crucial role in shaping restaurant reputations . Analyzing these reviews and restaurant data can provide valuable insights for both customers and business owners</text>
+<text><loc_200><loc_427><loc_495><loc_440>This project aims to analyze customer reviews to extract meaningful insights using Natural Language Processing (NLP)</text>
+<text><loc_200><loc_449><loc_480><loc_478>Technologies Used: Python , Numpy , Pandas , Matplotlib , Sebron , EDA , NLP , NLTK , Pytorch , Skit -learn , Wordcloud , Clustering , K -Means , TF -IDF , SVM , Word2Vec , stopwords , lemmatization , streaming , tokenization , and GridSearchCV , PCA , Git , , GitHub ,, SQL , AWS , Fast API , faiss -GPU .</text>
+</doctag>

@@ -1,0 +1,63 @@
+<doctag><section_header_level_1><loc_61><loc_45><loc_155><loc_52>Satip Santosh Patro</section_header_level_1>
+<section_header_level_1><loc_61><loc_61><loc_124><loc_67>Profile Summary</section_header_level_1>
+<text><loc_61><loc_75><loc_439><loc_105>Highly skilled and dedicated Azure Data Engineer with 5.2 years of experience. Strong expertise in database management and proficient in utilizing Azure technologies for data engineering tasks. Seeking a challenging role to leverage my skills in Azure data engineering and contribute to the success of an organization where I can learn and grow.</text>
+<section_header_level_1><loc_61><loc_113><loc_117><loc_118>Technical Skills</section_header_level_1>
+<unordered_list><list_item><loc_76><loc_128><loc_155><loc_133>Azure Data Factory</list_item>
+<list_item><loc_76><loc_136><loc_227><loc_141>Extract, Transform, Load (ETL) processes</list_item>
+<list_item><loc_76><loc_145><loc_145><loc_150>Data integration</list_item>
+<list_item><loc_76><loc_153><loc_131><loc_159>Azure CI/CD</list_item>
+<list_item><loc_76><loc_163><loc_128><loc_166>ADLS Gen2</list_item>
+<list_item><loc_76><loc_171><loc_117><loc_176>Pyspark</list_item>
+<list_item><loc_76><loc_180><loc_140><loc_185>Azure Synapse</list_item>
+<list_item><loc_76><loc_189><loc_161><loc_193>Dedicated SQL POOL</list_item>
+<list_item><loc_76><loc_197><loc_152><loc_202>Data warehousing</list_item>
+<list_item><loc_76><loc_206><loc_216><loc_211>Troubleshooting and issue resolution</list_item>
+<list_item><loc_76><loc_215><loc_110><loc_219>TTSQL</list_item>
+<list_item><loc_76><loc_223><loc_155><loc_228>Azure Blob Storage</list_item>
+<list_item><loc_76><loc_232><loc_125><loc_236>Snowflake</list_item>
+<list_item><loc_76><loc_241><loc_198><loc_246>SQL Server Management Studio</list_item>
+<list_item><loc_76><loc_250><loc_139><loc_255>Data pipelines</list_item>
+<list_item><loc_76><loc_258><loc_250><loc_263>Excellent Troubleshooting and Debugging Skills</list_item>
+<list_item><loc_76><loc_267><loc_147><loc_271>Azure Databricks</list_item>
+</unordered_list>
+<section_header_level_1><loc_61><loc_280><loc_125><loc_286>Work Experience</section_header_level_1>
+<text><loc_61><loc_294><loc_160><loc_299>Cozentus Technologies Pvt ltd</text>
+<text><loc_61><loc_307><loc_129><loc_312>Azure Data Engineer</text>
+<text><loc_371><loc_294><loc_439><loc_298>June 2022 – Present</text>
+<text><loc_374><loc_307><loc_439><loc_312>Bhubaneswar, India</text>
+<unordered_list><list_item><loc_76><loc_321><loc_439><loc_334>Worked as an end to end data solution provider starting from understanding requirements from business to designing database, data flow.</list_item>
+<list_item><loc_76><loc_338><loc_439><loc_351>Leveraged Azure Data Factory, Azure Synapse Database, and Azure Synapse Analytics, Azure Data Bricks, Azure Blob Storage, Azure Devops Git to build and maintain data pipelines and workflows</list_item>
+<list_item><loc_76><loc_355><loc_413><loc_360>Developed scripts writing Stored procedures and ADF Pipelines, Notebooks using SQL, PySpark.</list_item>
+<list_item><loc_76><loc_364><loc_439><loc_377>Designing data pipeline through ADF setting different types of triggers like Scheduled Trigger, Storage Events as per the requirements. Created different types of Datasets and Linked services.</list_item>
+<list_item><loc_76><loc_381><loc_439><loc_394>Collaborated with business analysts to understand their requirements and deliver data solutions to support their needs.</list_item>
+<list_item><loc_76><loc_398><loc_439><loc_411>Worked closely with stakeholders to define data integration requirements and designed efficient data integration processes.</list_item>
+<list_item><loc_76><loc_415><loc_439><loc_429>Conducted performance tuning and optimization activities to improve the efficiency and speed of data processing.</list_item>
+<list_item><loc_76><loc_432><loc_439><loc_446>Collaborated with cross -functional teams to troubleshoot issues, perform root cause analysis, and implement corrective actions.</list_item>
+<list_item><page_break></list_item>
+<list_item><loc_76><loc_45><loc_439><loc_58>Actively participated in Agile development processes, including sprint planning, daily stand-ups, and retrospective meetings .</list_item>
+</unordered_list>
+<picture><loc_387><loc_5><loc_490><loc_22></picture>
+<picture><loc_387><loc_5><loc_489><loc_22></picture>
+<text><loc_61><loc_66><loc_147><loc_71>Tata Consultancy Services</text>
+<text><loc_61><loc_80><loc_116><loc_84>System Engineer</text>
+<text><loc_352><loc_66><loc_439><loc_71>January 2020 – June 2022</text>
+<text><loc_382><loc_79><loc_439><loc_84>Hyderabad, India</text>
+<unordered_list><list_item><loc_76><loc_93><loc_439><loc_106>Worked in Microsoft azure data stack on azure SQL server, azure synapse database, azure data factory, azure devops git.</list_item>
+<list_item><loc_76><loc_110><loc_240><loc_115>Connecting different types of sources in adf.</list_item>
+<list_item><loc_76><loc_119><loc_438><loc_132>Managed databases and ensured their smooth operation, including performance monitoring, troubleshooting, and optimization.</list_item>
+<list_item><loc_76><loc_136><loc_439><loc_149>Collaborated with cross -functional teams to understand data requirements and developed data models and schemas accordingly.</list_item>
+<list_item><loc_76><loc_153><loc_439><loc_165>Worked in managing different types of databases like MySQL, DB2, Oracle SQL, MSSQL databases, Teradata Data warehouse.</list_item>
+<list_item><loc_76><loc_170><loc_318><loc_175>Worked in Linux/Unix commands for databases hosted in those OS.</list_item>
+<list_item><loc_76><loc_179><loc_241><loc_184>Worked in creating Dashboards for Power-BI</list_item>
+<list_item><loc_76><loc_187><loc_439><loc_201>Designed and implemented ETL processes to extract, transform, and load data into the database systems.</list_item>
+<list_item><loc_76><loc_205><loc_439><loc_217>Conducted data quality checks and implemented validation mechanisms to ensure accurate and reliable data.</list_item>
+<list_item><loc_76><loc_222><loc_399><loc_227>Developed and maintained data pipelines to automate data ingestion and processing tasks.</list_item>
+<list_item><loc_76><loc_230><loc_406><loc_235>Assisted in data integration projects, ensuring seamless data flow between different systems.</list_item>
+<list_item><loc_76><loc_239><loc_439><loc_253>Collaborated with stakeholders to identify opportunities for performance enhancement and implemented optimization techniques.</list_item>
+<list_item><loc_76><loc_256><loc_421><loc_261>Participated in code reviews, testing, and debugging activities to ensure high-quality deliverables.</list_item>
+<list_item><loc_76><loc_265><loc_432><loc_270>Provided technical support and resolved issues related to databases and data engineering processes.</list_item>
+</unordered_list>
+<section_header_level_1><loc_61><loc_278><loc_98><loc_283>Education</section_header_level_1>
+<unordered_list><list_item><loc_76><loc_292><loc_439><loc_306>B. Tech in Civil Engineering from Centurion University of Technology and Management Paralakhemundi , Odisha , India – 2019</list_item>
+</unordered_list>
+</doctag>

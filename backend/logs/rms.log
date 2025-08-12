@@ -1,0 +1,38 @@
+2025-08-10 19:50:52,918 - INFO - Started background processing for 10 files
+2025-08-10 19:50:52,919 - INFO - Starting background processing of 10 files
+2025-08-10 19:53:11,539 - INFO - Successfully parsed files
+2025-08-10 19:53:11,597 - INFO - Successfully loaded 16 parsed files
+2025-08-10 19:53:59,446 - ERROR - Failed to parse response for file temp\Hari Resume.doctags.txt: Expecting value: line 3 column 23 (char 55)
+2025-08-10 19:57:19,386 - INFO - Total processing time for 16 resumes: 247 seconds
+2025-08-10 19:57:19,445 - ERROR - Failed to insert profiles into database: Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed'}
+2025-08-10 19:57:19,452 - INFO - Cleanup completed
+2025-08-11 13:45:59,998 - INFO - Started background processing for 10 files
+2025-08-11 13:45:59,999 - INFO - Starting background processing of 10 files
+2025-08-11 13:47:31,745 - INFO - Successfully parsed files
+2025-08-11 13:47:31,800 - INFO - Successfully loaded 16 parsed files
+2025-08-11 13:53:30,609 - INFO - Total processing time for 16 resumes: 358 seconds
+2025-08-11 13:53:30,704 - INFO - Successfully inserted 16 profiles into database
+2025-08-11 13:53:30,710 - INFO - Cleanup completed
+2025-08-11 21:57:48,947 - ERROR - Unexpected error in get_matching_resumes: 'NoneType' object has no attribute 'filename'
+2025-08-11 22:00:16,674 - INFO - Contents extracted from job description
+2025-08-11 22:00:16,675 - INFO - Processing job: AI Prompt Engineer LLM / Conversational AI
+2025-08-11 22:00:16,710 - ERROR - Unexpected error in get_matching_resumes: Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed'}
+2025-08-11 22:02:00,708 - INFO - Contents extracted from job description
+2025-08-11 22:02:00,708 - INFO - Processing job: AI Prompt Engineer LLM / Conversational AI
+2025-08-11 22:02:00,719 - WARNING - No active resumes found for job_title: AI Prompt Engineer LLM / Conversational AI
+2025-08-11 22:09:10,770 - INFO - Contents extracted from job description
+2025-08-11 22:09:10,771 - INFO - Processing job: Junior AI Software Engineer / Data Analyst
+2025-08-11 22:09:10,774 - WARNING - No active resumes found for job_title: Junior AI Software Engineer / Data Analyst
+2025-08-11 22:17:11,044 - INFO - Started background processing for 10 files
+2025-08-11 22:17:11,046 - INFO - Starting background processing of 10 files
+2025-08-11 22:19:30,784 - INFO - Successfully parsed files
+2025-08-11 22:19:30,869 - INFO - Successfully loaded 16 parsed files
+2025-08-11 22:25:07,181 - INFO - Total processing time for 16 resumes: 336 seconds
+2025-08-11 22:25:07,207 - INFO - Successfully inserted 16 profiles into database
+2025-08-11 22:25:07,228 - INFO - Cleanup completed
+2025-08-11 22:29:43,656 - INFO - Contents extracted from job description
+2025-08-11 22:29:43,658 - INFO - Processing job: Junior AI Software Engineer / Data Analyst
+2025-08-11 22:29:43,663 - WARNING - No active resumes found for job_title: Junior AI Software Engineer / Data Analyst
+2025-08-12 10:17:50,380 - INFO - No job description found
+2025-08-12 10:18:36,956 - INFO - Contents extracted from job description
+2025-08-12 10:18:37,072 - INFO - jd info inserted in database

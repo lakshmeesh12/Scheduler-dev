@@ -1,0 +1,57 @@
+{
+    "json_keys": {
+        "name": "name",
+        "title": "job_title",  
+        "summary": "bio_sketch",  
+        "education": "education",
+        "certifications": "certifications",
+        "projects": "projects",
+        "publications": "publications",
+        "awards": "awards",
+        "work_history": "work_history"  
+    },
+    "placeholders": {
+        "name": "Name, Credentials",
+        "title": "External Title or Role",
+        "summary": "Tailor your bio",
+        "summary_continuation": "Quantify your experience",
+        "education": [
+    "Degree [list highest degree first], Major, Institution, Year of Graduation",
+    "Degree, Major, Institution, Year of Graduation"
+],
+        "certifications": "Licenses/Certifications",
+        "certifications_detail": "Discipline or Type, State or Organization, Registration No.",
+        "certifications_work_history": "(If necessary, a heading for “Work History” can also be included, appearing as Company, Title, Year Started to Year Ended)",
+        "work_history": "Work History",  
+        "projects": ["Project Title", "Institute", "City/Area, State", "Summarize your role"],  
+        "publications": "Last Name, First Name or Initials, Year. Title. Journal Name/Publisher/Conference information as applicable. Month and Day of Publication or Conference, as applicable.",
+        "awards": "Awards and Honors"
+    },
+    "defaults": {
+        "summary": "No Bio Available",
+        "font_name": "Calibri",
+        "font_size": 130000,  
+        "projects_font_name": "Arial",
+        "projects_font_size": 11,
+        "separator_font_size": 10,
+        "work_history": "No Work History Available"  
+    },
+    "formatting": {
+        "education_format": "{Degree} in {Major}, {Institution}, {YearOfGraduation}",
+        "education_fields": {"Degree": "Degree", "Major": "Major", "Institution": "Institution", "YearOfGraduation": "YearOfGraduation"},
+        "work_history_format": "{Company}, {Designation}, {StartYear} to {EndYear}", 
+        "work_history_fields": {"Company": "company", "Designation": "designation", "StartYear": "start_year", "EndYear": "end_year"}, 
+        "cert_indent": 137160,
+        "bullet_symbol": "• ",
+        "bullet_left_indent": 228600,
+        "bullet_first_line_indent": -228600,
+        "numbering_id": "2",
+        "numbering_level": "0",
+        "spacing_after": "0",
+        "projects_separator": "\n–––––––––––––––––––––––––––––––––––––––––––––––––––"
+    },
+    "colors": {
+        "dark_teal": [0, 102, 102],
+        "teal_accent_2": [0, 153, 153]
+    }
+}

@@ -1,0 +1,42 @@
+<doctag><section_header_level_1><loc_20><loc_16><loc_136><loc_27>Preetham Nagelli</section_header_level_1>
+<text><loc_19><loc_30><loc_141><loc_37>Software Engineer (AI -ML)</text>
+<unordered_list><list_item><loc_20><loc_41><loc_75><loc_47> Hyderabad</list_item>
+</unordered_list>
+<text><loc_86><loc_41><loc_145><loc_46> 9493869012</text>
+<text><loc_156><loc_41><loc_410><loc_47> preethamn1818@gmail . com  github . com/preethamn1818</text>
+<picture><loc_154><loc_40><loc_164><loc_47></picture>
+<picture><loc_19><loc_49><loc_27><loc_56></picture>
+<text><loc_20><loc_50><loc_161><loc_57> linkedin . com/in/preethamn1818</text>
+<section_header_level_1><loc_19><loc_67><loc_57><loc_73>Summary</section_header_level_1>
+<text><loc_19><loc_80><loc_480><loc_96>AI ML Engineer with expertise in applying Machine Learning techniques to drive business growth . Skilled in crafting and deploying high performance models utilizing Python and deep learning .</text>
+<section_header_level_1><loc_19><loc_108><loc_88><loc_114>Work Experience</section_header_level_1>
+<section_header_level_1><loc_19><loc_121><loc_60><loc_126>Aifa Labs</section_header_level_1>
+<text><loc_19><loc_130><loc_153><loc_137>Sr Software Engineer (AI - ML)</text>
+<text><loc_390><loc_121><loc_480><loc_126>Feb 2025 - Mar2025</text>
+<text><loc_431><loc_130><loc_480><loc_137>Hyderabad</text>
+<unordered_list><list_item><loc_39><loc_142><loc_464><loc_158>Developed a Re -rank Retrieval -Augmented Generation (RAG) system using Azure Cosmos DB MongoDB vCore as vector database and FastAPI backend .</list_item>
+</unordered_list>
+<section_header_level_1><loc_19><loc_168><loc_119><loc_175>Quintessential Design</section_header_level_1>
+<text><loc_19><loc_177><loc_84><loc_184>Data Engineer</text>
+<text><loc_390><loc_168><loc_480><loc_175>Jan 2022 - Sep 2024</text>
+<text><loc_431><loc_177><loc_480><loc_184>Hyderabad</text>
+<unordered_list><list_item><loc_39><loc_189><loc_480><loc_205>Utilized data visualization techniques to identify patterns and anomalies , leading to the discovery of unique patterns boosting business value by 15% .</list_item>
+<list_item><loc_39><loc_210><loc_480><loc_226>Reduced high -dimensional sensor data using dimensionality reduction techniques like UMAP , tSNE , and PCA , improving model training efficiency by 25% .</list_item>
+<list_item><loc_39><loc_231><loc_480><loc_247>Built and trained machine learning models , including Random Forest , XGBoost , Decision Trees , LSTMs , and CNNs , achieving 97% accuracy in data classification .</list_item>
+<list_item><loc_39><loc_252><loc_481><loc_268>Deployed trained machine learning models into production environments on AWS , enabling real -time predictions for Activity recognition , Gait recognition .</list_item>
+</unordered_list>
+<section_header_level_1><loc_19><loc_278><loc_58><loc_286>Medplus</section_header_level_1>
+<text><loc_419><loc_278><loc_480><loc_284>Jul 21 -Jan 22</text>
+<text><loc_19><loc_287><loc_94><loc_294>Design Engineer</text>
+<text><loc_431><loc_287><loc_480><loc_294>Hyderabad</text>
+<unordered_list><list_item><loc_39><loc_299><loc_480><loc_315>Custom developed python , micropython to develop firmware for the Esp 32 and Ras pi board , enabling real -time data processing and transmission .</list_item>
+</unordered_list>
+<section_header_level_1><loc_19><loc_326><loc_55><loc_331>Amazon</section_header_level_1>
+<text><loc_19><loc_334><loc_85><loc_340>Tron associate</text>
+<text><loc_409><loc_326><loc_480><loc_333>Aug 20 - Mar 21</text>
+<text><loc_431><loc_334><loc_480><loc_341>Hyderabad</text>
+<unordered_list><list_item><loc_39><loc_347><loc_480><loc_362>Analyzed video footage of stowing activities in fulfillment centers to detect exceptions and improve automation processes .</list_item>
+</unordered_list>
+<section_header_level_1><loc_19><loc_374><loc_59><loc_379>Education</section_header_level_1>
+<otsl><loc_18><loc_379><loc_482><loc_473><fcel>Malla Reddy Engineering College 2015 -<lcel><lcel><lcel><lcel><fcel>2019<nl><fcel>Mechanical Engineering<lcel><lcel><lcel><lcel><fcel>BTech<nl><fcel>9 . 67<lcel><lcel><lcel><lcel><ecel><nl><fcel>Technical Skills<lcel><lcel><lcel><lcel><lcel><nl><fcel>MCP Server<fcel>Langchain<fcel>Gen AI<fcel>Pytorch<fcel>Tensorflow<ecel><nl><fcel>Opencv<fcel>Pandas<fcel>Scikit Learn<fcel>Matplotlib<fcel>Git<ecel><nl><fcel>Fastapi<fcel>Flask<fcel>AWS<fcel>Azure<fcel>Docker<ecel><nl></otsl>
+</doctag>

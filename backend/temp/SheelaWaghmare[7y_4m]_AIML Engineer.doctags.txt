@@ -1,0 +1,139 @@
+<doctag><section_header_level_1><loc_7><loc_5><loc_169><loc_13>Panchasheela Gaikwad</section_header_level_1>
+<section_header_level_1><loc_7><loc_26><loc_213><loc_36>AI Cognitive & ML Developer</section_header_level_1>
+<unordered_list><list_item><loc_368><loc_2><loc_493><loc_8>panchasheelag89@gmail.com </list_item>
+<list_item><loc_442><loc_13><loc_493><loc_17>8801300854 🕽</list_item>
+</unordered_list>
+<text><loc_419><loc_23><loc_494><loc_29>Hyderabad, India </text>
+<text><loc_326><loc_33><loc_493><loc_40>linkedin.com/in/panchasheela-gaikwad89</text>
+<section_header_level_1><loc_148><loc_62><loc_196><loc_69>Summary:</section_header_level_1>
+<section_header_level_1><loc_14><loc_76><loc_103><loc_83>Languages & Tools</section_header_level_1>
+<text><loc_13><loc_92><loc_39><loc_97>Python</text>
+<text><loc_13><loc_111><loc_63><loc_115>GCP with ML</text>
+<text><loc_12><loc_130><loc_41><loc_135>My SQL</text>
+<text><loc_12><loc_148><loc_51><loc_153>Mongo DB</text>
+<text><loc_11><loc_166><loc_44><loc_170>Power BI</text>
+<text><loc_11><loc_184><loc_85><loc_189>Google Dialog flow</text>
+<text><loc_12><loc_202><loc_71><loc_207>Advanced Excel</text>
+<section_header_level_1><loc_15><loc_250><loc_39><loc_255>Skills</section_header_level_1>
+<unordered_list><list_item><loc_20><loc_272><loc_92><loc_277>Machine Learning</list_item>
+<list_item><loc_20><loc_279><loc_80><loc_285>Deep Learning</list_item>
+<list_item><loc_20><loc_287><loc_99><loc_292>Artificial Intelligence</list_item>
+<list_item><loc_20><loc_294><loc_46><loc_299>NLP</list_item>
+<list_item><loc_20><loc_302><loc_77><loc_306>Generative AI</list_item>
+<list_item><loc_20><loc_309><loc_66><loc_314>Langchain</list_item>
+<list_item><loc_20><loc_316><loc_63><loc_321>Vertex AI</list_item>
+<list_item><loc_20><loc_324><loc_125><loc_329>AWS, GCP,Azure App Services</list_item>
+<list_item><loc_20><loc_331><loc_103><loc_337>Azur Open AI,AI Studio</list_item>
+<list_item><loc_20><loc_339><loc_89><loc_344>NumPy & Pandas</list_item>
+<list_item><loc_20><loc_346><loc_97><loc_351>TensorFlow & Keras</list_item>
+<list_item><loc_20><loc_354><loc_100><loc_359>Pytorch,Tensor Flow</list_item>
+<list_item><loc_20><loc_362><loc_98><loc_367>Matplotlib Libraries</list_item>
+<list_item><loc_20><loc_369><loc_104><loc_374>Experience in creating</list_item>
+<list_item><loc_20><loc_376><loc_114><loc_389>chatbots by using Google Dialog flow</list_item>
+<list_item><loc_20><loc_391><loc_98><loc_397>Investment Banking</list_item>
+</unordered_list>
+<section_header_level_1><loc_16><loc_431><loc_66><loc_437>Tools -IDE</section_header_level_1>
+<unordered_list><list_item><loc_25><loc_452><loc_105><loc_458>Jupyter notebook</list_item>
+<list_item><loc_25><loc_460><loc_88><loc_467>Google colab</list_item>
+<list_item><loc_25><loc_469><loc_104><loc_474>MS -Visual Studio</list_item>
+</unordered_list>
+<text><loc_158><loc_77><loc_485><loc_123>Holding 2+ years of work experience as an AI & ML Developer, I specialize in architecting applications with Python libraries like Sklearn, NumPy, Pandas, and Matplotlib. Proficient in Data Visualization using Tableau, I've completed internal projects as a Data Scientist. Recognized for innovation, communication, and teamwork, I ensure quality project completion. Additionally, I bring 5.8 years of expertise in corporate actions, focusing on dividend operations in investment banking at Broadridge Financial. At Cognizant, I managed wealth and cash flows, while at Wipro, I ensured precise securities settlement in prime brokerage. Prior to this, I worked as a customer care executive for Airtel.</text>
+<section_header_level_1><loc_148><loc_131><loc_338><loc_138>Data Pro Technologies Ltd | Pune, India</section_header_level_1>
+<section_header_level_1><loc_147><loc_145><loc_370><loc_159>AI Cognitive & Generative AI Bot Developer - Backend Project: Hanes – Generative AI</section_header_level_1>
+<text><loc_429><loc_146><loc_484><loc_151>04/2022 - 09/2024</text>
+<text><loc_163><loc_162><loc_482><loc_190>Developed bot by extracting data SAP tables with the implementation of LLM's and RAG architecture, Vector bases, Intuition of the chatbot is extracting data from Sqlite3 and implementing responds to the user with respective query, As part of this we created query templates and given the query to LLM, before querying to customer match context of the user query and gives response</text>
+<section_header_level_1><loc_148><loc_195><loc_371><loc_200>Project: Maxis Tele Communication – Conversational AI Chat BOT</section_header_level_1>
+<unordered_list><list_item><loc_159><loc_207><loc_446><loc_226>Implementing Image Recognition for real -time troubleshooting, enabling customers to resolve issues efficiently. Enhancing user experience and message flow to ensure seamless interactions across channels.</list_item>
+<list_item><loc_159><loc_229><loc_453><loc_249>Enabling multichannel communication to provide customers with flexibility in how they engage with the contact centre. Leveraging customer conversation analytics to gain insights into customer interactions and preferences.</list_item>
+<list_item><loc_159><loc_252><loc_431><loc_264>Transforming high -value or complex interactions using artificial intelligence-powered analytics to provide personalized and intelligent solutions.</list_item>
+</unordered_list>
+<section_header_level_1><loc_148><loc_268><loc_269><loc_273>Technology Stack & Responsibilities</section_header_level_1>
+<unordered_list><list_item><loc_157><loc_279><loc_427><loc_292>Created Impact Analysis Document with respective affected Dialog flow intents and MicroservicesAPI endpoints by co-ordinating with Maxis Client</list_item>
+<list_item><loc_157><loc_295><loc_459><loc_315>Developed Image Recognition model for classification of Maxis Router images and integrated withMaxis Dialogue flow Chatbot by using Technologies GCP-Vertex AI and Auto ML and Data Augmentation Techniques & Data Annotation techniques</list_item>
+<list_item><loc_157><loc_317><loc_437><loc_330>Involved in Integration of Maxis Chatbot with Multi Channels like WhatsApp, Facebook Messenger,Twitter along with RingCentral platform</list_item>
+<list_item><loc_157><loc_332><loc_384><loc_338>Developed bot for Maxis E -Commerce Device discovery and Rate Plans</list_item>
+<list_item><loc_157><loc_339><loc_447><loc_352>Implemented Bot by using Node JS, Dialog flow, GCP Vertex AI, Big -Query & Cloud Storage. CloudStorage, AWS -DynamoDB, Lambda function, CloudWatch</list_item>
+<list_item><loc_157><loc_354><loc_418><loc_366>Worked on AWS Quick Sight Dashboard for the analysis of Intents which trigger in Production Environment</list_item>
+</unordered_list>
+<section_header_level_1><loc_158><loc_377><loc_314><loc_384>Wipro India Pvt Ltd, Hyderabad, India</section_header_level_1>
+<text><loc_376><loc_378><loc_438><loc_383>11/2018 - 4/2019</text>
+<text><loc_158><loc_387><loc_333><loc_394>Senior Analyst-Prime Brokerage Settlement</text>
+<section_header_level_1><loc_160><loc_397><loc_214><loc_402>Responsibilities:</section_header_level_1>
+<unordered_list><list_item><loc_148><loc_409><loc_452><loc_421>Provided comprehensive support to hedge fund clients, including settlement services and stock borrowing/lending.</list_item>
+<list_item><loc_148><loc_422><loc_482><loc_434>Managed trade settlements and promptly addressed failed trades, collaborating across departments for timely resolutions.</list_item>
+<list_item><loc_148><loc_435><loc_467><loc_447>Implemented proactive measuresto cover short sales and mitigate operational risks, validating and correcting trade bookings to ensure smooth settlement and minimize P/L impact.</list_item>
+<list_item><loc_148><loc_448><loc_484><loc_460>Implementing Image Recognition for real -time troubleshooting, enabling customers to resolve issues efficiently. Enhancing user experience and message flow to ensure seamless interactions across channels.</list_item>
+</unordered_list>
+<page_break>
+<section_header_level_1><loc_7><loc_2><loc_213><loc_33>Panchasheela Gaikwad AI Cognitive & ML Developer</section_header_level_1>
+<text><loc_365><loc_6><loc_488><loc_12>panchasheelag89@gmail.com </text>
+<text><loc_436><loc_17><loc_487><loc_21>8801300854 🕽</text>
+<text><loc_413><loc_27><loc_488><loc_33>Hyderabad, India </text>
+<text><loc_320><loc_37><loc_487><loc_44>linkedin.com/in/panchasheela-gaikwad89</text>
+<section_header_level_1><loc_157><loc_61><loc_349><loc_67>Cognizant technology solution Pvt, Ltd. | India</section_header_level_1>
+<text><loc_373><loc_61><loc_437><loc_67>2/2018 -9/2018</text>
+<text><loc_157><loc_71><loc_322><loc_77>Process Specialist - Wealth Management</text>
+<section_header_level_1><loc_157><loc_81><loc_211><loc_86>Responsibilities:</section_header_level_1>
+<unordered_list><list_item><loc_157><loc_95><loc_435><loc_115>Monitored pre -balancing for timely payments, resolved trade discrepancies, managed pre -balancing reports, and ensured quality through checks on mandatory corporate CS</list_item>
+</unordered_list>
+<text><loc_158><loc_115><loc_228><loc_120>PROJECT DETAILS</text>
+<section_header_level_1><loc_157><loc_126><loc_363><loc_132>Broadridge Financial Solutions | Hyderabad, India</section_header_level_1>
+<text><loc_387><loc_126><loc_440><loc_132>6/2014 -1/2018</text>
+<text><loc_157><loc_133><loc_304><loc_143>Megatron
+enior Ana ✓ 
+or Megatron
+✓ This is conversational AI Chatbot proje
+Senior Analyst – Investment Banking</text>
+<text><loc_190><loc_140><loc_464><loc_145>This is conversational AI Chatbot project, we have designed this from scratch without using 
+nalyst Investment Banking</text>
+<section_header_level_1><loc_157><loc_146><loc_211><loc_151>any inb
+Responsibilities:</section_header_level_1>
+<text><loc_189><loc_147><loc_465><loc_152>any inbuilt framework. Transformer based BERT model (state of the ART model) is used for
+bilities:</text>
+<unordered_list><list_item><loc_157><loc_160><loc_481><loc_171>Conducted detailed payment reviews for securities and managed general ledger entries and provided timely updates and reports.</list_item>
+<list_item><loc_157><loc_173><loc_489><loc_178>Monitored stock loans/Borrows & Fail to receive/delivers and collaborated with DTC broker participants.</list_item>
+</unordered_list>
+<text><loc_157><loc_180><loc_162><loc_183>✓</text>
+<unordered_list><list_item><loc_172><loc_180><loc_476><loc_197>Utilized DTCCCCA WEB, PTS/PBS, and Bloomberg Terminal for CUSIP-related information. Handled both mandatory and voluntary corporate actions payments and reconciliations of cash and bonds.</list_item>
+</unordered_list>
+<section_header_level_1><loc_157><loc_206><loc_351><loc_212>Allsec Technologies Pvt. Ltd | Hyderabad, India</section_header_level_1>
+<text><loc_419><loc_207><loc_477><loc_212>9/2011 - 7/2012</text>
+<text><loc_157><loc_215><loc_342><loc_220>Customer Care Executive -Airtel SIM Network</text>
+<section_header_level_1><loc_157><loc_224><loc_211><loc_229>Responsibilities:</section_header_level_1>
+<unordered_list><list_item><loc_157><loc_235><loc_482><loc_251>Provided comprehensive customer service for Airtel SIM network users, addressing network issues,</list_item>
+</unordered_list>
+<section_header_level_1><loc_157><loc_258><loc_210><loc_265>Applications:</section_header_level_1>
+<unordered_list><list_item><loc_157><loc_271><loc_271><loc_276>Clear -stream (Live Market) and</list_item>
+<list_item><loc_157><loc_278><loc_319><loc_283>DTCC (Depository Trust & Clearing Corporation).</list_item>
+<list_item><loc_157><loc_285><loc_294><loc_290>✓</list_item>
+<list_item><loc_157><loc_289><loc_188><loc_296>✓
+Ta ✓ ✓
+Tally</list_item>
+</unordered_list>
+<section_header_level_1><loc_157><loc_306><loc_274><loc_312>Educational Qualification:</section_header_level_1>
+<unordered_list><list_item><loc_157><loc_318><loc_467><loc_330>Successfully aggregated M.B.A (Finance) from Malla Reddy Institute of Management – Osmania University with 72%</list_item>
+<list_item><loc_157><loc_331><loc_461><loc_343>Successfully B.A(Journalism) Gove Degree College for Women's which is affiliated to Osmania University at Begumpet, Hyderabad 69 %</list_item>
+</unordered_list>
+<text><loc_157><loc_471><loc_174><loc_475>Date:</text>
+<text><loc_157><loc_478><loc_174><loc_482>Place</text>
+<section_header_level_1><loc_21><loc_74><loc_64><loc_79>AWARDS</section_header_level_1>
+<unordered_list><list_item><loc_41><loc_91><loc_119><loc_104>Diligent, adaptable, recognized.Broadridge</list_item>
+<list_item><loc_41><loc_106><loc_106><loc_127>Award -winning associate excelling -Broadridge</list_item>
+</unordered_list>
+<section_header_level_1><loc_22><loc_189><loc_88><loc_194>Certifications:</section_header_level_1>
+<unordered_list><list_item><loc_22><loc_214><loc_123><loc_228>CertifiedData Scientist (CDS)</list_item>
+<list_item><loc_22><loc_230><loc_71><loc_235>NASCOME</list_item>
+<list_item><loc_22><loc_238><loc_58><loc_243>IABAC</list_item>
+<list_item><loc_22><loc_245><loc_59><loc_251>TALLY</list_item>
+</unordered_list>
+<section_header_level_1><loc_24><loc_332><loc_92><loc_337>Achievements</section_header_level_1>
+<unordered_list><list_item><loc_24><loc_354><loc_117><loc_369>NSS National Service Scheme (O.U)</list_item>
+</unordered_list>
+<section_header_level_1><loc_19><loc_425><loc_64><loc_432>Strengths</section_header_level_1>
+<unordered_list><list_item><loc_25><loc_447><loc_101><loc_452>Positive attitude.</list_item>
+<list_item><loc_25><loc_456><loc_86><loc_462>Hardworking</list_item>
+<list_item><loc_25><loc_464><loc_70><loc_469>Patience</list_item>
+<list_item><loc_25><loc_473><loc_115><loc_479>Continuous Learning</list_item>
+</unordered_list>
+<page_footer><loc_434><loc_478><loc_488><loc_482>G. Panchasheela</page_footer>
+</doctag>

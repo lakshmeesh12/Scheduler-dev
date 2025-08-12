@@ -1,0 +1,533 @@
+{
+  "page_style": {
+    "page_size": "Letter",
+    "orientation": "Portrait",
+    "margins": {
+      "top": 0.65,
+      "bottom": 0.65,
+      "left": 0.65,
+      "right": 0.65
+    },
+    "header": true,
+    "footer": false
+  },
+  "table_styles": {
+    "bio_table": {
+      "num_columns": 2,
+      "column_widths": [
+        5.2,
+        2.0
+      ],
+      "borders": false,
+      "cell_styles": [
+        {
+          "top_padding": 0.0,
+          "left_padding": 0.0,
+          "bottom_padding": 0.0,
+          "right_padding": 0.2,
+          "wrap_text": true,
+          "vertical_align": "top"
+        },
+        {
+          "top_padding": 0.0,
+          "left_padding": 0.2,
+          "bottom_padding": 0.0,
+          "right_padding": 0.0,
+          "wrap_text": true,
+          "vertical_align": "top"
+        }
+      ],
+      "width_percent": 100.0,
+      "repeat_header": false
+    },
+    "project_table": {
+      "num_columns": 1,
+      "column_widths": [
+        7.5
+      ],
+      "borders": false,
+      "cell_styles": [
+        {
+          "top_padding": 0.0,
+          "left_padding": 0.0,
+          "bottom_padding": 0.0,
+          "right_padding": 0.0,
+          "wrap_text": true,
+          "vertical_align": "top"
+        }
+      ],
+      "width_percent": 100.0,
+      "repeat_header": true
+    }
+  },
+  "section_styles": {
+    "name": {
+      "section_type": "name",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 18.0,
+        "font_color": "#005568",
+        "theme_color": "text2",
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Name and credentials at top of resume"
+    },
+    "title": {
+      "section_type": "title",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 14.0,
+        "font_color": "#678385",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": true,
+        "border_thickness": 1.0,
+        "border_color": "#90B13E",
+        "border_theme_color": "accent4"
+      },
+      "description": "External title/job title"
+    },
+    "bio": {
+      "section_type": "bio",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.5,
+        "font_color": "#000000",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 6.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Biographical text"
+    },
+    "education_header": {
+      "section_type": "education_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.0,
+        "font_color": "#005568",
+        "theme_color":"text2",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 6.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Education section header"
+    },
+    "education_item": {
+      "section_type": "education_item",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 9.0,
+        "theme_color": null,
+        "font_color": "#000000",
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Education information items"
+    },
+    "certification_header": {
+      "section_type": "certification_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.0,
+        "font_color": "#005568",
+        "theme_color":"text2",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 6.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Licenses/Certifications section header"
+    },
+    "certification_item": {
+      "section_type": "certification_item",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 9.0,
+        "font_color": "#000000",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Certification information items"
+    },
+    "work_history_header": {
+      "section_type": "work_history_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.0,
+        "font_color": "#005568",
+        "theme_color":"text2",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 6.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Work History section header"
+    },
+    "work_history_item": {
+      "section_type": "work_history_item",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 9.0,
+        "font_color": "#000000",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Work history information items"
+    },
+    "project_header": {
+      "section_type": "project_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 14.0,
+        "font_color": "#678385",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": true,
+        "border_thickness": 1.0,
+        "border_color": "#90B13E",
+        "border_theme_color": "accent4"
+      },
+      "description": "Relevant Project Experience header"
+    },
+    "project_title": {
+      "section_type": "project_title",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.5,
+        "font_color": "#005568",
+        "theme_color": "text2",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Project title and client"
+    },
+    "project_description": {
+      "section_type": "project_description",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.5,
+        "font_color": "#000000",
+        "theme_color": "null",
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 10.5,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Project description text"
+    },
+    "publications_header": {
+      "section_type": "publications_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 18.0,
+        "font_color": "#678385",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 12.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": true,
+        "border_thickness": 1.0,
+        "border_color": "#90B13E",
+        "border_theme_color": "accent4"
+      },
+      "description": "Publications section header"
+    },
+    "publications_item": {
+      "section_type": "publications_item",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.5,
+        "font_color": "#000000",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 10.5,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.25,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Publications text item"
+    },
+    "awards_header": {
+      "section_type": "others_header",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 18.0,
+        "font_color": "#678385",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 12.0,
+        "space_after": 6.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": true,
+        "border_thickness": 1.0,
+        "border_color": "#90B13E",
+        "border_theme_color": "accent4"
+      },
+      "description": "Awards and Honors section header"
+    },
+    "awards_item": {
+      "section_type": "other_items",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 10.5,
+        "font_color": "#000000",
+        "theme_color": null,
+        "bold": false,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.25,
+        "hanging_indent": 0.0,
+        "is_bullet": true,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Other Items of Interest section header"
+    },
+    "header_name": {
+      "section_type": "header_name",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 8.0,
+        "font_color": "#005568",
+        "theme_color": "text2",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Header name style for pages after first page"
+    },
+    "header_title": {
+      "section_type": "header_title",
+      "font_style": {
+        "font_family": "Myriad Pro",
+        "font_size": 8.0,
+        "font_color": "#B0C1BC",
+        "theme_color": "accent3",
+        "bold": true,
+        "italic": false,
+        "underline": false
+      },
+      "paragraph_style": {
+        "line_spacing": 1.0,
+        "space_before": 0.0,
+        "space_after": 0.0,
+        "alignment": "left",
+        "indentation": 0.0,
+        "hanging_indent": 0.0,
+        "is_bullet": false,
+        "border_bottom": false,
+        "border_thickness": 0.0,
+        "border_color": "#000000",
+        "border_theme_color": "accent4"
+      },
+      "description": "Header title style for pages after first page"
+    }
+  }
+}
