@@ -2,26 +2,29 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from login import LoginHandler
 from calendar_ops import CalendarHandler
+from event import EventScheduler
 from pymongo import MongoClient
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 import pytz
 import uuid
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any, Dict, List, Optional
 
 app = FastAPI()
 login_handler = LoginHandler()
 calendar_handler = CalendarHandler()
+event_scheduler = EventScheduler()
 mongo_client = MongoClient("mongodb://localhost:27017")
 db = mongo_client["calendar_app"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # Allow frontend origin
+    allow_origins=["http://localhost:8080"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Predefined time slots for UI time picker (every 30 minutes)
@@ -39,19 +42,23 @@ class UserIdentifier(BaseModel):
     given_name: Optional[str] = None
 
 class WorkingHours(BaseModel):
-    start_time: str  # e.g., "09:00"
-    end_time: str    # e.g., "17:00"
-    timezone: str    # e.g., "America/New_York"
+    start_time: str
+    end_time: str
+    timezone: str
 
 class PanelSelection(BaseModel):
     user_ids: List[str]
+    created_by: str
 
 class InterviewDetails(BaseModel):
     title: str
-    duration: int  # in minutes
-    date: str     # YYYY-MM-DD
+    description: str
+    duration: int
+    date: str
     preferred_timezone: str
-    location: Optional[str] = None
+    location: str
+    meeting_type: Optional[str] = None
+
 
 @app.get("/")
 async def home():
@@ -97,11 +104,10 @@ async def create_calendar_event(user_id: str, event: EventCreate):
 @app.get("/users")
 async def get_all_users():
     try:
-        # Fetch all users, regardless of working_hours or timezone
         users = list(db.users.find(
-            {},  # No filter to include all users
+            {},
             {
-                "_id": 0,  # Exclude MongoDB's _id field
+                "_id": 0,
                 "user_id": 1,
                 "display_name": 1,
                 "email": 1,
@@ -121,11 +127,9 @@ async def get_all_users():
 @app.post("/user/settings/{user_id}")
 async def set_user_settings(user_id: str, settings: WorkingHours):
     try:
-        # Validate timezone
         if settings.timezone not in pytz.all_timezones:
             raise HTTPException(status_code=400, detail="Invalid timezone")
 
-        # Validate time slots
         if settings.start_time not in TIME_SLOTS or settings.end_time not in TIME_SLOTS:
             raise HTTPException(status_code=400, detail="Invalid start_time or end_time. Must be in 30-minute increments (e.g., '09:00', '17:30').")
 
@@ -169,7 +173,6 @@ async def save_panel_selection(selection: PanelSelection):
         if not selection.user_ids:
             raise HTTPException(status_code=400, detail="At least one user_id is required")
 
-        # Validate all user_ids exist
         users = list(db.users.find(
             {"user_id": {"$in": selection.user_ids}},
             {"_id": 0, "user_id": 1}
@@ -177,13 +180,14 @@ async def save_panel_selection(selection: PanelSelection):
         if len(users) != len(selection.user_ids):
             raise HTTPException(status_code=404, detail="One or more users not found")
 
-        # Generate a session ID
-        session_id = str(uuid.uuid4())
+        if not db.users.find_one({"user_id": selection.created_by}):
+            raise HTTPException(status_code=404, detail="Creator user not found")
 
-        # Store selection in a new collection
+        session_id = str(uuid.uuid4())
         db.panel_selections.insert_one({
             "session_id": session_id,
             "user_ids": selection.user_ids,
+            "created_by": selection.created_by,
             "created_at": datetime.utcnow()
         })
 
@@ -193,44 +197,29 @@ async def save_panel_selection(selection: PanelSelection):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-class InterviewDetails(BaseModel):
-    title: str
-    description: str
-    duration: int
-    date: str
-    preferred_timezone: str
-    location: str
-    meeting_type: str | None = None  # Optional field to store meetingType
-
 @app.post("/interview-details/{session_id}")
 async def save_interview_details(session_id: str, details: InterviewDetails):
     try:
-        # Validate session_id
         selection = db.panel_selections.find_one({"session_id": session_id})
         if not selection:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        # Validate title and description
         if not details.title.strip():
             raise HTTPException(status_code=400, detail="Title cannot be empty")
         if not details.description.strip():
             raise HTTPException(status_code=400, detail="Description cannot be empty")
 
-        # Validate timezone
         if details.preferred_timezone not in pytz.all_timezones:
             raise HTTPException(status_code=400, detail="Invalid preferred timezone")
 
-        # Validate date format
         try:
             datetime.strptime(details.date, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
 
-        # Validate duration
         if details.duration <= 0:
             raise HTTPException(status_code=400, detail="Duration must be positive")
 
-        # Update session with interview details
         db.panel_selections.update_one(
             {"session_id": session_id},
             {"$set": {
@@ -248,7 +237,6 @@ async def save_interview_details(session_id: str, details: InterviewDetails):
 @app.get("/available-slots/{session_id}")
 async def get_available_slots(session_id: str):
     try:
-        # Retrieve session
         selection = db.panel_selections.find_one({"session_id": session_id})
         if not selection:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -262,7 +250,6 @@ async def get_available_slots(session_id: str):
         duration = details["duration"]
         preferred_timezone = details["preferred_timezone"]
 
-        # Get available slots within working hours
         slots = await calendar_handler.get_available_slots(user_ids, date, duration, preferred_timezone)
         
         return JSONResponse({
@@ -284,7 +271,6 @@ async def get_available_slots(session_id: str):
 @app.get("/all-available-slots/{session_id}")
 async def get_all_available_slots(session_id: str):
     try:
-        # Retrieve session
         selection = db.panel_selections.find_one({"session_id": session_id})
         if not selection:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -298,7 +284,6 @@ async def get_all_available_slots(session_id: str):
         duration = details["duration"]
         preferred_timezone = details["preferred_timezone"]
 
-        # Get all available slots (ignoring working hours)
         slots = await calendar_handler.get_all_available_slots(user_ids, date, duration, preferred_timezone)
         
         return JSONResponse({
@@ -315,7 +300,55 @@ async def get_all_available_slots(session_id: str):
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
-    
+
+class ScheduleEventRequest(BaseModel):
+    slot: Dict[str, str]
+    mail_template: Dict[str, str]
+    candidate_email: Optional[str] = None
+
+@app.post("/schedule-event/{session_id}")
+async def schedule_event(session_id: str, request: ScheduleEventRequest):
+    try:
+        result = await event_scheduler.schedule_event(
+            session_id,
+            request.slot,
+            request.mail_template,
+            request.candidate_email
+        )
+        return JSONResponse(result)
+    except HTTPException as e:
+        if e.status_code == 403:
+            return JSONResponse(
+                {"error": f"Permission error: {e.detail}"},
+                status_code=403
+            )
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+class EventTrackerResponse(BaseModel):
+    status: Optional[str] = None
+    candidate: Optional[Dict[str, str]] = None  # {name, email}
+    position: Optional[str] = None
+    scheduled_time: Optional[Dict[str, Any]] = None  # {date, start_time, duration}
+    virtual: Optional[bool] = None
+    candidate_response: Optional[Dict[str, Any]] = None  # {name, email, response, response_time}
+    panel_response_status: Optional[Dict[str, Any]] = None  # {summary: {accepted, declined, tentative, pending}, responses: [{name, email, role, response, response_time}]}
+
+@app.get("/event-tracker/{session_id}", response_model=EventTrackerResponse)
+async def track_event(session_id: str):
+    try:
+        result = await event_scheduler.track_event(session_id)
+        return JSONResponse(result)
+    except HTTPException as e:
+        if e.status_code == 403:
+            return JSONResponse(
+                {"error": f"Permission error: {e.detail}"},
+                status_code=403
+            )
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
 #Bharadwaj
 
@@ -784,7 +817,7 @@ async def get_matching_resumes(
             logger.info("No job title available")
 
         # Fetch matching resumes
-        resumes_cursor = mongo_db['profiles'].find({"active": True}, {"_id": 0})
+        resumes_cursor = mongo_db['profiles'].find({}, {"_id": 0})
         resumes = await resumes_cursor.to_list(length=None)
         
         if not resumes:
