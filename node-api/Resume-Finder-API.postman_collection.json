@@ -1,0 +1,629 @@
+{
+  "info": {
+    "name": "Resume Finder Tool API",
+    "description": "Complete API collection for Resume Finder Tool with Clean Architecture",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the API is running"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profiles",
+      "item": [
+        {
+          "name": "Create Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"+1234567890\",\n  \"summary\": \"Experienced software engineer with 5+ years in full-stack development\",\n  \"experience\": [\n    {\n      \"company\": \"TechCorp Inc\",\n      \"position\": \"Senior Software Engineer\",\n      \"startDate\": \"2020-01-01\",\n      \"endDate\": \"2024-01-01\",\n      \"description\": \"Led development of microservices architecture\",\n      \"isCurrentRole\": false\n    }\n  ],\n  \"education\": [\n    {\n      \"institution\": \"Tech University\",\n      \"degree\": \"Bachelor of Computer Science\",\n      \"graduationYear\": 2019,\n      \"gpa\": 3.8\n    }\n  ],\n  \"skills\": [\n    {\n      \"name\": \"JavaScript\",\n      \"proficiency\": \"Expert\",\n      \"yearsOfExperience\": 5\n    },\n    {\n      \"name\": \"React\",\n      \"proficiency\": \"Advanced\",\n      \"yearsOfExperience\": 4\n    }\n  ],\n  \"location\": \"New York, NY\",\n  \"preferredLocation\": \"Remote\",\n  \"salaryExpectation\": {\n    \"min\": 100000,\n    \"max\": 150000,\n    \"currency\": \"USD\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles"]
+            },
+            "description": "Create a new candidate profile"
+          }
+        },
+        {
+          "name": "Get All Profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "skills",
+                  "value": "JavaScript,React",
+                  "disabled": true
+                },
+                {
+                  "key": "location",
+                  "value": "New York",
+                  "disabled": true
+                },
+                {
+                  "key": "experienceLevel",
+                  "value": "Senior",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all profiles with optional filtering and pagination"
+          }
+        },
+        {
+          "name": "Get Profile by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "{{profileId}}"]
+            },
+            "description": "Get a specific profile by ID"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"summary\": \"Updated summary with new achievements\",\n  \"skills\": [\n    {\n      \"name\": \"JavaScript\",\n      \"proficiency\": \"Expert\",\n      \"yearsOfExperience\": 6\n    },\n    {\n      \"name\": \"Node.js\",\n      \"proficiency\": \"Advanced\",\n      \"yearsOfExperience\": 4\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "{{profileId}}"]
+            },
+            "description": "Update an existing profile"
+          }
+        },
+        {
+          "name": "Delete Profile",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/{{profileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "{{profileId}}"]
+            },
+            "description": "Delete a profile"
+          }
+        },
+        {
+          "name": "Upload Resume",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "resume",
+                  "type": "file",
+                  "src": "",
+                  "description": "Upload a resume file (PDF, DOC, DOCX)"
+                },
+                {
+                  "key": "profileId",
+                  "value": "{{profileId}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/upload-resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "upload-resume"]
+            },
+            "description": "Upload and parse a resume file"
+          }
+        },
+        {
+          "name": "Get Excel Template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/excel-template",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "excel-template"]
+            },
+            "description": "Get Excel template structure for bulk import"
+          }
+        },
+        {
+          "name": "Validate Excel File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "excelFile",
+                  "type": "file",
+                  "src": "",
+                  "description": "Excel file to validate"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/validate-excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "validate-excel"]
+            },
+            "description": "Validate Excel file structure before import"
+          }
+        },
+        {
+          "name": "Import from Excel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "excelFile",
+                  "type": "file",
+                  "src": "",
+                  "description": "Excel file with candidate data"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/import-excel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "import-excel"]
+            },
+            "description": "Import candidate data from Excel file - Creates ExcelImport records with user tracking"
+          }
+        },
+        {
+          "name": "Get Excel Imports by User ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/excel-imports/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "excel-imports", "user", "{{userId}}"]
+            },
+            "description": "Get all Excel import records for a specific user ID"
+          }
+        },
+        {
+          "name": "Get Excel Imports by Batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/excel-imports/batch/{{batchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "excel-imports", "batch", "{{batchId}}"]
+            },
+            "description": "Get all Excel import records for a specific import batch"
+          }
+        },
+        {
+          "name": "Get Excel Import Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/profiles/excel-imports/stats/{{batchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "profiles", "excel-imports", "stats", "{{batchId}}"]
+            },
+            "description": "Get import statistics for a specific batch (counts by status)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Job Descriptions",
+      "item": [
+        {
+          "name": "Create Job Description",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Full Stack Developer\",\n  \"company\": \"TechCorp Inc\",\n  \"description\": \"We are looking for a senior full stack developer to join our team and lead the development of our next-generation platform.\",\n  \"requirements\": \"5+ years of experience in full stack development, proficiency in React and Node.js, experience with cloud platforms\",\n  \"skills\": [\n    {\n      \"name\": \"JavaScript\",\n      \"importance\": \"Required\"\n    },\n    {\n      \"name\": \"React\",\n      \"importance\": \"Required\"\n    },\n    {\n      \"name\": \"Node.js\",\n      \"importance\": \"Required\"\n    },\n    {\n      \"name\": \"AWS\",\n      \"importance\": \"Preferred\"\n    }\n  ],\n  \"experienceLevel\": \"Senior\",\n  \"location\": \"San Francisco, CA\",\n  \"salaryRange\": {\n    \"min\": 120000,\n    \"max\": 180000,\n    \"currency\": \"USD\"\n  },\n  \"employmentType\": \"Full-time\",\n  \"createdBy\": \"hr@techcorp.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/job-descriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job-descriptions"]
+            },
+            "description": "Create a new job description"
+          }
+        },
+        {
+          "name": "Get All Job Descriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-descriptions?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job-descriptions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "company",
+                  "value": "TechCorp",
+                  "disabled": true
+                },
+                {
+                  "key": "experienceLevel",
+                  "value": "Senior",
+                  "disabled": true
+                },
+                {
+                  "key": "skills",
+                  "value": "JavaScript,React",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all job descriptions with optional filtering"
+          }
+        },
+        {
+          "name": "Get Job Description by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-descriptions/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job-descriptions", "{{jobId}}"]
+            },
+            "description": "Get a specific job description by ID"
+          }
+        },
+        {
+          "name": "Update Job Description",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Senior Full Stack Developer - Updated\",\n  \"description\": \"Updated job description with new requirements\",\n  \"skills\": [\n    {\n      \"name\": \"JavaScript\",\n      \"importance\": \"Required\"\n    },\n    {\n      \"name\": \"TypeScript\",\n      \"importance\": \"Required\"\n    },\n    {\n      \"name\": \"React\",\n      \"importance\": \"Required\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/job-descriptions/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job-descriptions", "{{jobId}}"]
+            },
+            "description": "Update an existing job description"
+          }
+        },
+        {
+          "name": "Delete Job Description",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/job-descriptions/{{jobId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "job-descriptions", "{{jobId}}"]
+            },
+            "description": "Delete a job description"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Matching",
+      "item": [
+        {
+          "name": "Find Matching Profiles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobDescriptionId\": \"{{jobId}}\",\n  \"threshold\": 0.7,\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/find-profiles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "find-profiles"]
+            },
+            "description": "Find profiles that match a job description"
+          }
+        },
+        {
+          "name": "Find Matching Jobs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"profileId\": \"{{profileId}}\",\n  \"threshold\": 0.7,\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/find-jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "find-jobs"]
+            },
+            "description": "Find jobs that match a candidate profile"
+          }
+        },
+        {
+          "name": "Get Match Results",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/results?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "results"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "profileId",
+                  "value": "{{profileId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "jobDescriptionId",
+                  "value": "{{jobId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "minScore",
+                  "value": "0.7",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get paginated match results with optional filtering"
+          }
+        },
+        {
+          "name": "Get Match Result by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/results/{{matchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "results", "{{matchId}}"]
+            },
+            "description": "Get a specific match result by ID"
+          }
+        },
+        {
+          "name": "Update Match Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"contacted\",\n  \"notes\": \"Initial contact made, candidate interested\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/results/{{matchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "results", "{{matchId}}"]
+            },
+            "description": "Update match result status and notes"
+          }
+        },
+        {
+          "name": "Delete Match Result",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/results/{{matchId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "results", "{{matchId}}"]
+            },
+            "description": "Delete a match result"
+          }
+        },
+        {
+          "name": "Bulk Match Profiles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobDescriptionIds\": [\"{{jobId}}\"],\n  \"profileIds\": [\"{{profileId}}\"],\n  \"threshold\": 0.6\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/matching/bulk-match",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "matching", "bulk-match"]
+            },
+            "description": "Perform bulk matching between multiple profiles and jobs"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "profileId",
+      "value": "",
+      "type": "string",
+      "description": "ID of a created profile"
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "type": "string",
+      "description": "ID of a created job description"
+    },
+    {
+      "key": "matchId",
+      "value": "",
+      "type": "string",
+      "description": "ID of a match result"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string",
+      "description": "User ID from Excel import (UUID or profile ID)"
+    },
+    {
+      "key": "batchId",
+      "value": "",
+      "type": "string",
+      "description": "Import batch ID from Excel import"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set base URL if not already set",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    pm.environment.set('baseUrl', 'http://localhost:3001');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Common tests for all requests",
+          "pm.test('Response time is less than 2000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "// Save IDs from successful POST requests",
+          "if (pm.response.code === 201 || pm.response.code === 200) {",
+          "    const responseJson = pm.response.json();",
+          "    ",
+          "    if (responseJson.data && responseJson.data._id) {",
+          "        const requestUrl = pm.request.url.toString();",
+          "        ",
+          "        if (requestUrl.includes('/profiles')) {",
+          "            pm.environment.set('profileId', responseJson.data._id);",
+          "        } else if (requestUrl.includes('/job-descriptions')) {",
+          "            pm.environment.set('jobId', responseJson.data._id);",
+          "        } else if (requestUrl.includes('/matching')) {",
+          "            pm.environment.set('matchId', responseJson.data._id);",
+          "        }",
+          "    }",
+          "    ",
+          "    // Save Excel import batch ID and user IDs",
+          "    if (responseJson.data && responseJson.data.importBatch) {",
+          "        pm.environment.set('batchId', responseJson.data.importBatch);",
+          "    }",
+          "    ",
+          "    if (responseJson.data && responseJson.data.excelImportIds && responseJson.data.excelImportIds.length > 0) {",
+          "        pm.environment.set('userId', 'example-user-id'); // You can extract from actual import data",
+          "    }",
+          "}"
+        ]
+      }
+    }
+  ]
+}

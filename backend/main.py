@@ -349,7 +349,48 @@ async def track_event(session_id: str):
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+    
+class EventUpdateRequest(BaseModel):
+    remove_emails: List[str]
+    add_emails: List[str]
 
+@app.post("/event-update/{session_id}", response_model=EventTrackerResponse)
+async def update_event(session_id: str, request: EventUpdateRequest):
+    try:
+        result = await event_scheduler.update_event(session_id, request.remove_emails, request.add_emails)
+        return JSONResponse(result)
+    except HTTPException as e:
+        if e.status_code == 403:
+            return JSONResponse(
+                {"error": f"Permission error: {e.detail}"},
+                status_code=403
+            )
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+
+class SchedulerResponse(BaseModel):
+    interviews: List[Dict[str, Any]]  # List of interview details
+    statistics: Dict[str, int]        # {total, scheduled, pending, completed}
+
+    class Interview(BaseModel):
+        session_id: str
+        candidate: Dict[str, str]     # {email, name, recent_designation, profile_id}
+        event_start_time: str
+        panel_emails: List[str]
+
+@app.get("/scheduler", response_model=SchedulerResponse)
+async def scheduler():
+    try:
+        result = await event_scheduler.scheduler()
+        return JSONResponse(result)
+    except HTTPException as e:
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+    
 #Bharadwaj
 
 import ast
