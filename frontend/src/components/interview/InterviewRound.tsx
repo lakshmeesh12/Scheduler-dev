@@ -191,7 +191,7 @@ export const InterviewRound = ({
               <div className="mt-2 p-4 bg-muted/50 rounded-lg">
                 <div className="flex flex-wrap gap-2">
                   {round.panel.map((member) => (
-                    <Badge key={member.id} variant="outline" className="bg-background">
+                    <Badge variant="outline" className="bg-background">
                       {member.name} ({member.role})
                     </Badge>
                   ))}

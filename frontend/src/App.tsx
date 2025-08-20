@@ -115,6 +115,14 @@ const App = () => {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
+                    <AppLayout><HiringCampaignTracker /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/search"
+                element={
+                  <ProtectedRoute>
                     <AppLayout><Index /></AppLayout>
                   </ProtectedRoute>
                 }

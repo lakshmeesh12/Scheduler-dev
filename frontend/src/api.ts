@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { AxiosRequestConfig } from "axios"; // should work in v1.6+
+
+
 
 const API_BASE_URL = 'http://localhost:8000'; // Update if your backend runs on a different URL/port
 const NODE_API_BASE_URL = 'http://localhost:3001';
@@ -519,3 +522,165 @@ const updateEvent = async (sessionId: string, removeEmails: string[], addEmails:
 
 export type { EventUpdateRequest, EventUpdateResponse };
 export { updateEvent };
+
+export interface Interview {
+  _id: string;
+  session_id: string;
+  user_ids: string[];
+  created_by: string;
+  created_at: string;
+  interview_details: {
+    title: string;
+    description: string;
+    duration: number;
+    date: string;
+    preferred_timezone: string;
+    location: string;
+    meeting_type: string | null;
+  };
+  updated_at: string;
+  campaign_id: string;
+  scheduled_event: {
+    event_id: string;
+    start: string;
+    end: string;
+    candidate_email: string;
+    panel_emails: string[];
+    created_at: string;
+  };
+}
+
+export interface HiringCampaign {
+  id: string;
+  jobTitle: string;
+  department: string;
+  positions: number;
+  status: "Active" | "Completed" | "On Hold";
+  startDate: string;
+  endDate?: string;
+  location: string;
+  candidatesApplied: number;
+  candidatesHired: number;
+  currentRound: string;
+  description: string;
+  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  jobType: "Full-time" | "Part-time" | "Contract";
+  client_id: string;
+  Interview?: Interview[];
+}
+
+export interface CampaignCreate {
+  jobTitle: string;
+  description: string;
+  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  positions: number;
+  location: string;
+  department: string;
+  jobType: "Full-time" | "Part-time" | "Contract";
+  startDate: string;
+  client_id: string;
+}
+
+export interface Client {
+  id: string;
+  companyName: string;
+  location: string;
+  industry: string;
+  description: string;
+  logoPath?: string;
+}
+
+export interface ClientCreate {
+  companyName: string;
+  location: string;
+  industry: string;
+  description: string;
+}
+
+export const createClient = async (client: ClientCreate, logo?: File): Promise<Client> => {
+  try {
+    const formData = new FormData();
+    formData.append('companyName', client.companyName);
+    formData.append('location', client.location);
+    formData.append('industry', client.industry);
+    formData.append('description', client.description);
+    if (logo) {
+      formData.append('logo', logo);
+    }
+
+    const config: AxiosRequestConfig = {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    };
+
+    const response = await apiClient.post<Client>('/api/new-client', formData, config);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to create client');
+    }
+    throw new Error('Network error while creating client');
+  }
+};
+
+export const fetchAllClients = async (): Promise<Client[]> => {
+  try {
+    const response = await apiClient.get<Client[]>('/api/all-clients');
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch clients');
+    }
+    throw new Error('Network error while fetching clients');
+  }
+};
+
+export const fetchClientById = async (clientId: string): Promise<Client> => {
+  try {
+    const response = await apiClient.get<Client>(`/api/client/${clientId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch client');
+    }
+    throw new Error('Network error while fetching client');
+  }
+};
+
+export const fetchAllCampaigns = async (clientId?: string): Promise<HiringCampaign[]> => {
+  try {
+    const params = clientId ? { client_id: clientId } : {};
+    const response = await apiClient.get<HiringCampaign[]>('/api/all-campaigns', { params });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaigns');
+    }
+    throw new Error('Network error while fetching campaigns');
+  }
+};
+
+export const createCampaign = async (campaign: CampaignCreate): Promise<HiringCampaign> => {
+  try {
+    const response = await apiClient.post<HiringCampaign>('/api/new-campaign', campaign);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
+    }
+    throw new Error('Network error while creating campaign');
+  }
+};
+
+export const fetchCampaignById = async (campaignId: string): Promise<HiringCampaign> => {
+  try {
+    const response = await apiClient.get<HiringCampaign>(`/api/campaign/${campaignId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaign');
+    }
+    throw new Error('Network error while fetching campaign');
+  }
+};

@@ -18,14 +18,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class EventScheduler:
-
+    def __init__(self):
+        self.calendar_handler = CalendarHandler()
 
     async def schedule_event(
             self,
             session_id: str,
             slot: Dict[str, str],
             mail_template: Dict[str, str],
-            candidate_email: Optional[str] = None
+            candidate_email: Optional[str] = None,
+            campaign_id: Optional[str] = None
         ) -> Dict[str, Any]:
             """
             Schedule an Outlook event with a Teams meeting link.
@@ -35,9 +37,10 @@ class EventScheduler:
                 slot: Selected time slot with start and end times (either HH:MM:SS or ISO datetime)
                 mail_template: Contains subject and body for the event
                 candidate_email: Optional email of the candidate to include as an attendee
+                campaign_id: Optional campaign ID to associate with the event
             """
             try:
-                logger.info(f"Starting event scheduling for session_id: {session_id}")
+                logger.info(f"Starting event scheduling for session_id: {session_id}, campaign_id: {campaign_id}")
                 
                 # Validate session
                 session = db.panel_selections.find_one({"session_id": session_id})
@@ -265,7 +268,7 @@ class EventScheduler:
                 # Create event using calendar_handler
                 logger.info(f"Creating event for user: {created_by}")
                 try:
-                    result = await calendar_handler.create_event(created_by, event_data)
+                    result = await self.calendar_handler.create_event(created_by, event_data)
                     logger.info(f"Event created successfully, event_id: {result.get('id')}, result: {result}")
                 except Exception as e:
                     logger.error(f"Graph API error: {str(e)}")
@@ -276,25 +279,45 @@ class EventScheduler:
                         )
                     raise
 
-                # Store event details in the session
+                # Store event details in the session with campaign_id
                 panel_emails = [attendee["email"] for attendee in attendees]
+                updated_session = {
+                    "scheduled_event": {
+                        "event_id": result.get("id"),
+                        "start": slot["start"],
+                        "end": slot["end"],
+                        "candidate_email": candidate_email,
+                        "panel_emails": panel_emails,
+                        "created_at": datetime.utcnow()
+                    },
+                    "campaign_id": campaign_id
+                }
                 db.panel_selections.update_one(
                     {"session_id": session_id},
-                    {
-                        "$set": {
-                            "scheduled_event": {
-                                "event_id": result.get("id"),
-                                "start": slot["start"],
-                                "end": slot["end"],
-                                "candidate_email": candidate_email,
-                                "panel_emails": panel_emails,
-                                "created_at": datetime.utcnow()
-                            }
-                        }
-                    }
+                    {"$set": updated_session}
                 )
 
-                # Handle teams_link (no update needed, as Graph API adds it automatically)
+                # Copy the entire panel_selections record to campaign-tracker collection
+                if campaign_id:
+                    session_record = db.panel_selections.find_one({"session_id": session_id})
+                    if session_record:
+                        db['campaign-tracker'].update_one(
+                            {"_id": campaign_id},
+                            {
+                                "$push": {
+                                    "Interview": session_record
+                                },
+                                "$set": {
+                                    "updated_at": datetime.utcnow()
+                                }
+                            },
+                            upsert=True
+                        )
+                        logger.info(f"Copied panel_selections record to campaign-tracker for campaign_id: {campaign_id}")
+                    else:
+                        logger.error(f"Failed to find panel_selections record for session_id: {session_id} after update")
+
+                # Handle teams_link
                 teams_link = None
                 if result.get("onlineMeeting"):
                     teams_link = result["onlineMeeting"].get("joinUrl")

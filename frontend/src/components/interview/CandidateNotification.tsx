@@ -237,8 +237,12 @@ The Hiring Team`;
 
     try {
       const sessionId = localStorage.getItem("session_id");
+      const campaignId = sessionStorage.getItem("campaignId");
       if (!sessionId) {
         throw new Error("Session ID not found. Please log in again.");
+      }
+      if (!campaignId) {
+        throw new Error("Campaign ID not found. Please select a campaign.");
       }
 
       const slot = mode === 'single' ? timeSlots[0] : timeSlots[0];
@@ -254,6 +258,7 @@ The Hiring Team`;
         candidate_email: toEmails[0], // Primary recipient
         to_emails: toEmails, // All To recipients
         cc_emails: ccEmails, // All CC recipients
+        campaign_id: campaignId // Add campaign_id to the request
       };
 
       console.log("CandidateNotification: Sending schedule-event request:", request);

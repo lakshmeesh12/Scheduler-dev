@@ -25,12 +25,12 @@ import {
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Search Candidates", url: "/search", icon: UserPlus },
   { title: "Add Candidate", url: "/add-candidate", icon: UserPlus },
   { title: "Panel Members", url: "/panel-members", icon: Users },
   { title: "View Candidates", url: "/view-candidates", icon: Eye },
   { title: "Scheduler", url: "/scheduler", icon: Calendar },
   { title: "Event Tracker", url: "/event-tracker", icon: BarChart3 },
-  { title: "Hiring Campaign Tracker", url: "/hiring-campaign-tracker", icon: Briefcase },
   { title: "Reminder Settings", url: "/reminder-settings", icon: Settings },
 ];
 
