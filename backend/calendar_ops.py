@@ -22,7 +22,7 @@ class CalendarHandler:
         self.client_id = os.getenv("CLIENT_ID")
         self.client_secret = os.getenv("CLIENT_SECRET")
         self.authority = os.getenv("AUTHORITY")
-        self.scopes = ["User.Read", "Calendars.ReadWrite", "Calendars.ReadWrite.Shared", "MailboxSettings.Read"]
+        self.scopes = ["User.Read", "Calendars.ReadWrite", "Calendars.ReadWrite.Shared", "MailboxSettings.Read", "OnlineMeetings.ReadWrite"]
         self.mongo_client = MongoClient("mongodb://localhost:27017")
         self.db = self.mongo_client["calendar_app"]
         self.users_collection = self.db["users"]
@@ -119,13 +119,16 @@ class CalendarHandler:
             "Content-Type": "application/json",
             "Prefer": f"outlook.timezone=\"{event_data['start']['timeZone']}\""
         }
+        logger.info(f"create_event: Sending attendees to Graph API: {[{'email': att['emailAddress']['address'], 'type': att['type']} for att in event_data.get('attendees', [])]}")
         graph_resp = requests.post(
             "https://graph.microsoft.com/v1.0/me/events",
             headers=headers,
             json=event_data
         )
         graph_resp.raise_for_status()
-        return graph_resp.json()
+        response = graph_resp.json()
+        logger.info(f"create_event: Graph API response attendees: {[{'email': att['emailAddress']['address'], 'type': att['type']} for att in response.get('attendees', [])]}")
+        return response
     
     async def get_event(self, user_id: str, event_id: str) -> dict:
         """

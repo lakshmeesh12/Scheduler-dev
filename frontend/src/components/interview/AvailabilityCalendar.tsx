@@ -12,8 +12,8 @@ import { toast } from "@/components/ui/use-toast";
 import { CandidateNotification } from "./CandidateNotification";
 
 interface PanelMember {
-  id: string;
-  name: string;
+  user_id: string; // Changed from id to user_id
+  display_name: string; // Changed from name to display_name
   email: string;
   role: string;
 }
@@ -34,7 +34,7 @@ interface InterviewDetails {
   date: Date | null;
   location: string;
   meetingType: 'in-person' | 'virtual';
-  preferred_timezone: string;
+  preferred_timezone: string; // Changed from preferred_timezone
 }
 
 interface AvailabilityCalendarProps {
@@ -43,6 +43,8 @@ interface AvailabilityCalendarProps {
   preferredTimezone: string;
   candidate: ApiCandidate;
   interviewDetails: InterviewDetails | null;
+  onTimeSlotSelect: (slot: TimeSlot) => void;
+  roundStatus?: 'draft' | 'scheduled' | 'completed';
 }
 
 export const AvailabilityCalendar = ({
@@ -51,6 +53,8 @@ export const AvailabilityCalendar = ({
   preferredTimezone,
   candidate,
   interviewDetails,
+  onTimeSlotSelect,
+  roundStatus,
 }: AvailabilityCalendarProps) => {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -61,14 +65,16 @@ export const AvailabilityCalendar = ({
   const [mode, setMode] = useState<'single' | 'multiple'>('single');
   const [showNotification, setShowNotification] = useState(false);
 
-  // Debug: Log candidate prop and relevant states
+  // Debug: Log props and state
   useEffect(() => {
     console.log("AvailabilityCalendar: Candidate prop received:", candidate);
+    console.log("AvailabilityCalendar: Panel members:", panelMembers);
     console.log("AvailabilityCalendar: Selected slot:", selectedSlot);
     console.log("AvailabilityCalendar: Selected slots (multiple):", selectedSlots);
     console.log("AvailabilityCalendar: Mode:", mode);
     console.log("AvailabilityCalendar: Show notification:", showNotification);
-  }, [candidate, selectedSlot, selectedSlots, mode, showNotification]);
+    console.log("AvailabilityCalendar: Round status:", roundStatus);
+  }, [candidate, panelMembers, selectedSlot, selectedSlots, mode, showNotification, roundStatus]);
 
   const handleCheckAvailability = () => {
     console.log("AvailabilityCalendar: Checking availability for panel members:", panelMembers);
@@ -103,13 +109,24 @@ export const AvailabilityCalendar = ({
 
         console.log("AvailabilityCalendar: API response for slots:", response);
 
+        // Validate panelMembers
+        const validMemberIds = panelMembers
+          .filter(member => {
+            if (!member.user_id) {
+              console.warn("AvailabilityCalendar: Panel member missing user_id:", member);
+              return false;
+            }
+            return true;
+          })
+          .map(member => member.user_id);
+
         const slots = response.slots.map((slot: any, index: number) => ({
           id: `${slot.date}-${slot.start}-${index}`,
           start: slot.start,
           end: slot.end,
           date: slot.date,
           available: true,
-          availableMembers: panelMembers.map((member) => member.id),
+          availableMembers: validMemberIds,
         }));
 
         const filteredSlots = selectedDate
@@ -137,7 +154,13 @@ export const AvailabilityCalendar = ({
 
   const formatTime = (time: string) => {
     console.log("AvailabilityCalendar: Formatting time:", time);
-    return time;
+    try {
+      const parsedTime = parse(time, "hh:mm a", new Date());
+      return format(parsedTime, "h:mm a");
+    } catch (error) {
+      console.error(`AvailabilityCalendar: Failed to format time: ${time}`, error);
+      return time;
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -154,8 +177,8 @@ export const AvailabilityCalendar = ({
 
   const getAvailableMemberNames = (slot: TimeSlot) => {
     const members = panelMembers
-      .filter((member) => slot.availableMembers.includes(member.id))
-      .map((member) => member.name);
+      .filter((member) => slot.availableMembers.includes(member.user_id))
+      .map((member) => member.display_name);
     console.log(`AvailabilityCalendar: Available members for slot ${slot.id}:`, members);
     return members;
   };
@@ -164,9 +187,10 @@ export const AvailabilityCalendar = ({
     console.log("AvailabilityCalendar: Slot selected:", slot);
     if (mode === 'multiple') {
       const exists = selectedSlots.some((s) => s.id === slot.id);
-      setSelectedSlots((prev) => (exists ? prev.filter((s) => s.id !== slot.id) : [...prev, slot]));
+      setSelectedSlots((prev) => exists ? prev.filter((s) => s.id !== slot.id) : [...prev, slot]);
     } else {
       setSelectedSlot(slot);
+      onTimeSlotSelect(slot);
     }
   };
 
@@ -183,6 +207,9 @@ export const AvailabilityCalendar = ({
     }
     if ((mode === 'single' && selectedSlot) || (mode === 'multiple' && selectedSlots.length > 0)) {
       console.log("AvailabilityCalendar: Showing CandidateNotification");
+      if (mode === 'multiple') {
+        selectedSlots.forEach(slot => onTimeSlotSelect(slot));
+      }
       setShowNotification(true);
     } else {
       console.error("AvailabilityCalendar: No valid slot selected. Mode:", mode, "Selected slot:", selectedSlot, "Selected slots:", selectedSlots);
@@ -195,10 +222,12 @@ export const AvailabilityCalendar = ({
   };
 
   const handleNotificationSent = () => {
-    console.log("AvailabilityCalendar: Notification sent, resetting state");
+    console.log("AvailabilityCalendar: Notification sent, updating parent state");
     setShowNotification(false);
-    setSelectedSlot(null);
-    setSelectedSlots([]);
+    if (roundStatus !== 'completed') {
+      setSelectedSlot(null);
+      setSelectedSlots([]);
+    }
   };
 
   const groupSlotsByDate = (slots: TimeSlot[]) => {
@@ -213,6 +242,11 @@ export const AvailabilityCalendar = ({
     console.log("AvailabilityCalendar: Grouped slots by date:", grouped);
     return grouped;
   };
+
+  if (roundStatus === 'completed') {
+    console.log("AvailabilityCalendar: Round is completed, not rendering calendar");
+    return null;
+  }
 
   if (showNotification) {
     console.log("AvailabilityCalendar: Rendering CandidateNotification with candidate:", candidate);

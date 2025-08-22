@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search, Plus, Users, Filter, SortDesc, MoreHorizontal,
   Calendar, TrendingUp, UserCheck, UserX, Clock, Eye,
   Download, FileText, Star, ChevronRight, ChevronDown,
-  Building, MapPin, Target, Briefcase, ArrowLeft, Loader2
+  Building, MapPin, Target, Briefcase, ArrowLeft, Loader2, X, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,6 @@ import {
   ClientCreate, MatchingResponse, AggregatedScore, Interview
 } from "@/api";
 
-
 interface Candidate {
   id: string;
   name: string;
@@ -38,30 +37,38 @@ interface Candidate {
   feedback: string;
 }
 
+interface TalentAcquisitionTeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: "Recruiter" | "Hiring Manager" | "Coordinator";
+  isHiringManager: boolean;
+}
+
 const HiringCampaignTracker = () => {
   const navigate = useNavigate();
- 
+
   // State for client management
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false);
- 
+
   // State for campaign management
   const [campaigns, setCampaigns] = useState<HiringCampaign[]>([]);
   const [selectedCampaign, setSelectedCampaign] = useState<HiringCampaign | null>(null);
   const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
- 
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"jobTitle" | "startDate" | "candidatesApplied">("startDate");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
- 
+
   // Loading and error states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
- 
+
   // Candidate search states
   const [candidateSearchResults, setCandidateSearchResults] = useState<AggregatedScore[]>([]);
   const [isSearchingCandidates, setIsSearchingCandidates] = useState(false);
@@ -77,7 +84,7 @@ const HiringCampaignTracker = () => {
     location: "",
     industry: ""
   });
- 
+
   const [newCampaign, setNewCampaign] = useState<CampaignCreate>({
     client_id: "",
     jobTitle: "",
@@ -87,8 +94,19 @@ const HiringCampaignTracker = () => {
     location: "",
     department: "Engineering",
     jobType: "Full-time",
-    startDate: new Date().toISOString().split("T")[0]
+    startDate: new Date().toISOString().split("T")[0],
+    created_by: "", // Added to match CampaignCreate interface
+    talentAcquisitionTeam: []
+    });
+
+  const [newTeamMember, setNewTeamMember] = useState<TalentAcquisitionTeamMember>({
+    id: "",
+    name: "",
+    email: "",
+    role: "Recruiter",
+    isHiringManager: false
   });
+
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // Load clients on component mount
@@ -153,44 +171,115 @@ const HiringCampaignTracker = () => {
     }
   };
 
-  // Handle campaign creation
-  const handleCreateCampaign = async () => {
-    if (!selectedClient) return;
-    const errors: { [key: string]: string } = {};
-    if (!newCampaign.jobTitle.trim()) errors.jobTitle = "Job Title is required";
-    if (!newCampaign.description.trim()) errors.description = "Description is required";
-    if (!newCampaign.location.trim()) errors.location = "Location is required";
-    if (newCampaign.positions < 1) errors.positions = "At least one position is required";
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
+  // Add log to monitor newCampaign state changes
+useEffect(() => {
+  console.log('newCampaign state updated:', newCampaign);
+}, [newCampaign]);
+
+// Handle adding team member
+const handleAddTeamMember = () => {
+  console.log('Adding team member:', newTeamMember);
+  if (!newTeamMember.name.trim() || !newTeamMember.email.trim()) {
+    setError("Name and email are required for team members");
+    console.error('Validation failed: Name or email is empty');
+    return;
+  }
+  if (!newTeamMember.email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+    setError("Invalid email format for team member");
+    console.error('Validation failed: Invalid email format', newTeamMember.email);
+    return;
+  }
+
+  const memberWithId = {
+    ...newTeamMember,
+    id: Date.now().toString()
+  };
+
+  console.log('New team member with ID:', memberWithId);
+  const updatedTeam = [...(newCampaign.talentAcquisitionTeam || []), memberWithId];
+  setNewCampaign({
+    ...newCampaign,
+    talentAcquisitionTeam: updatedTeam
+  });
+  console.log('Updated newCampaign.talentAcquisitionTeam:', updatedTeam);
+
+  setNewTeamMember({
+    id: "",
+    name: "",
+    email: "",
+    role: "Recruiter",
+    isHiringManager: false
+  });
+};
+
+// Handle campaign creation
+const handleCreateCampaign = async () => {
+  if (!selectedClient) {
+    console.error('No client selected');
+    return;
+  }
+  const errors: { [key: string]: string } = {};
+  if (!newCampaign.jobTitle.trim()) errors.jobTitle = "Job Title is required";
+  if (!newCampaign.description.trim()) errors.description = "Description is required";
+  if (!newCampaign.location.trim()) errors.location = "Location is required";
+  if (newCampaign.positions < 1) errors.positions = "At least one position is required";
+  newCampaign.talentAcquisitionTeam.forEach((member, index) => {
+    if (!member.email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
+      errors[`teamMemberEmail${index}`] = `Invalid email for team member: ${member.name}`;
     }
-    setIsLoading(true);
-    try {
-      const campaignData = {
-        ...newCampaign,
-        client_id: selectedClient.id
-      };
-      const createdCampaign = await createCampaign(campaignData);
-      setCampaigns([...campaigns, createdCampaign]);
-      setNewCampaign({
-        client_id: "",
-        jobTitle: "",
-        description: "",
-        experienceLevel: "Junior",
-        positions: 1,
-        location: "",
-        department: "Engineering",
-        jobType: "Full-time",
-        startDate: new Date().toISOString().split("T")[0]
-      });
-      setFormErrors({});
-      setIsCreateCampaignModalOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create campaign');
-    } finally {
-      setIsLoading(false);
-    }
+  });
+  if (Object.keys(errors).length > 0) {
+    setFormErrors(errors);
+    console.error('Form validation errors:', errors);
+    return;
+  }
+  setIsLoading(true);
+  try {
+    console.log('Creating campaign with payload:', newCampaign);
+    const campaignData = {
+      ...newCampaign,
+      client_id: selectedClient.id
+    };
+    console.log('Sending campaign data to API:', campaignData);
+    const createdCampaign = await createCampaign(campaignData);
+    console.log('Campaign created successfully:', createdCampaign);
+    setCampaigns([...campaigns, createdCampaign]);
+    setNewCampaign({
+      client_id: "",
+      jobTitle: "",
+      description: "",
+      experienceLevel: "Junior",
+      positions: 1,
+      location: "",
+      department: "Engineering",
+      jobType: "Full-time",
+      startDate: new Date().toISOString().split("T")[0],
+      created_by: "", // Added to match CampaignCreate interface
+      talentAcquisitionTeam: []
+    });
+    setNewTeamMember({
+      id: "",
+      name: "",
+      email: "",
+      role: "Recruiter",
+      isHiringManager: false
+    });
+    setFormErrors({});
+    setIsCreateCampaignModalOpen(false);
+  } catch (err) {
+    console.error('Error creating campaign:', err);
+    setError(err instanceof Error ? err.message : 'Failed to create campaign');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+  // Handle removing team member
+  const handleRemoveTeamMember = (memberId: string) => {
+    setNewCampaign({
+      ...newCampaign,
+      talentAcquisitionTeam: newCampaign.talentAcquisitionTeam?.filter(m => m.id !== memberId) || []
+    });
   };
 
   // Handle candidate search using fetchMatchingResumes
@@ -270,8 +359,6 @@ const HiringCampaignTracker = () => {
     }
   };
 
- 
-
   // Filter and sort campaigns
   const filteredAndSortedCampaigns = useMemo(() => {
     let result = campaigns.filter(campaign => {
@@ -279,7 +366,6 @@ const HiringCampaignTracker = () => {
                            campaign.department.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
       const matchesDepartment = departmentFilter === "all" || campaign.department === departmentFilter;
-     
       return matchesSearch && matchesStatus && matchesDepartment;
     });
     result.sort((a, b) => {
@@ -341,7 +427,6 @@ const HiringCampaignTracker = () => {
               <p className="text-sm text-muted-foreground">#{candidate.rank}</p>
             </div>
           </div>
-         
           <div>
             <Label className="text-sm font-medium">Matched Skills</Label>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -414,7 +499,6 @@ const HiringCampaignTracker = () => {
               </div>
             </div>
           </div>
-         
           <div>
             <Label className="text-sm font-medium">Panel Members</Label>
             <div className="flex flex-wrap gap-2 mt-2">
@@ -479,7 +563,6 @@ const HiringCampaignTracker = () => {
                 <p className="text-sm text-gray-600">Enterprise Hiring Management</p>
               </div>
             </div>
-           
             {!selectedClient ? (
               <Button
                 onClick={() => setIsCreateClientModalOpen(true)}
@@ -534,7 +617,6 @@ const HiringCampaignTracker = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {isLoading && <p className="text-center">Loading...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
-       
         {isSearchingCandidates && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="flex flex-col items-center space-y-4">
@@ -543,7 +625,6 @@ const HiringCampaignTracker = () => {
             </div>
           </div>
         )}
-       
         {!selectedClient ? (
           // Client List View
           <div className="space-y-6">
@@ -572,41 +653,39 @@ const HiringCampaignTracker = () => {
               {clients
                 .filter(client => client.companyName.toLowerCase().includes(searchQuery.toLowerCase()))
                 .map((client) => (
-                <Card
-                  key={client.id}
-                  className="glass hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105"
-                  onClick={() => setSelectedClient(client)}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={client.logoPath}
-                        alt={`${client.companyName} logo`}
-                        className="w-12 h-12 object-contain rounded-lg"
-                      />
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{client.companyName}</CardTitle>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Building className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">{client.industry}</span>
+                  <Card
+                    key={client.id}
+                    className="glass hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105"
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={client.logoPath}
+                          alt={`${client.companyName} logo`}
+                          className="w-12 h-12 object-contain rounded-lg"
+                        />
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{client.companyName}</CardTitle>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Building className="w-4 h-4 text-gray-500" />
+                            <span className="text-sm text-gray-600">{client.industry}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                 
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-gray-600 line-clamp-2">{client.description}</p>
-                   
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-600">{client.location}</span>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-sm text-gray-600 line-clamp-2">{client.description}</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-1">
+                          <MapPin className="w-4 h-4 text-gray-500" />
+                          <span className="text-gray-600">{client.location}</span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
             {/* New Client Modal */}
             <Dialog open={isCreateClientModalOpen} onOpenChange={setIsCreateClientModalOpen}>
@@ -723,7 +802,6 @@ const HiringCampaignTracker = () => {
                       />
                     </div>
                   </div>
-                 
                   <Select value={statusFilter} onValueChange={setStatusFilter} disabled={isLoading}>
                     <SelectTrigger className="w-40">
                       <SelectValue placeholder="Status" />
@@ -783,13 +861,16 @@ const HiringCampaignTracker = () => {
                           <Building className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-600">{campaign.department}</span>
                         </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <User className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-600">Created by: {campaign.created_by_name}</span>
+                        </div>
                       </div>
                       <Badge className={getStatusColor(campaign.status)}>
                         {campaign.status}
                       </Badge>
                     </div>
                   </CardHeader>
-                 
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-1">
@@ -822,8 +903,8 @@ const HiringCampaignTracker = () => {
                       </div>
                     </div>
                     <div className="text-sm">
-                      <p className="text-gray-500">Current Round</p>
-                      <p className="font-medium">{campaign.currentRound}</p>
+                      <p className="text-gray-500">Team Members</p>
+                      <p className="font-medium">{campaign.talentAcquisitionTeam?.length || 0} members</p>
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t">
                       <span className="text-xs text-gray-500">
@@ -837,132 +918,197 @@ const HiringCampaignTracker = () => {
             </div>
             {/* New Campaign Modal */}
             <Dialog open={isCreateCampaignModalOpen} onOpenChange={setIsCreateCampaignModalOpen}>
-              <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Campaign</DialogTitle>
                   <DialogDescription>
-                    Create a new hiring campaign for {selectedClient.companyName}
+                    Create a new hiring campaign for {selectedClient?.companyName}
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="jobTitle">Job Title</Label>
-                    <Input
-                      id="jobTitle"
-                      value={newCampaign.jobTitle}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, jobTitle: e.target.value })}
-                      placeholder="Enter job title"
-                      disabled={isLoading}
-                    />
-                    {formErrors.jobTitle && <p className="text-red-500 text-xs">{formErrors.jobTitle}</p>}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="jobTitle">Job Title</Label>
+                      <Input
+                        id="jobTitle"
+                        value={newCampaign.jobTitle}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, jobTitle: e.target.value })}
+                        placeholder="Enter job title"
+                        disabled={isLoading}
+                      />
+                      {formErrors.jobTitle && <p className="text-red-500 text-xs">{formErrors.jobTitle}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <Input
+                        id="location"
+                        value={newCampaign.location}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, location: e.target.value })}
+                        placeholder="Enter location"
+                        disabled={isLoading}
+                      />
+                      {formErrors.location && <p className="text-red-500 text-xs">{formErrors.location}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="department">Department</Label>
+                      <Select
+                        value={newCampaign.department}
+                        onValueChange={(value) => setNewCampaign({ ...newCampaign, department: value })}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Engineering">Engineering</SelectItem>
+                          <SelectItem value="Product">Product</SelectItem>
+                          <SelectItem value="Design">Design</SelectItem>
+                          <SelectItem value="Marketing">Marketing</SelectItem>
+                          <SelectItem value="Sales">Sales</SelectItem>
+                          <SelectItem value="Operations">Operations</SelectItem>
+                          <SelectItem value="Finance">Finance</SelectItem>
+                          <SelectItem value="HR">HR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="jobType">Job Type</Label>
+                      <Select
+                        value={newCampaign.jobType}
+                        onValueChange={(value: "Full-time" | "Part-time" | "Contract") => setNewCampaign({ ...newCampaign, jobType: value })}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select job type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Full-time">Full-time</SelectItem>
+                          <SelectItem value="Part-time">Part-time</SelectItem>
+                          <SelectItem value="Contract">Contract</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="experienceLevel">Experience Level</Label>
+                      <Select
+                        value={newCampaign.experienceLevel}
+                        onValueChange={(value: "Junior" | "Mid-level" | "Senior") => setNewCampaign({ ...newCampaign, experienceLevel: value })}
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select experience level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Junior">Junior</SelectItem>
+                          <SelectItem value="Mid-level">Mid-level</SelectItem>
+                          <SelectItem value="Senior">Senior</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="positions">Open Positions</Label>
+                      <Input
+                        id="positions"
+                        type="number"
+                        value={newCampaign.positions}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, positions: parseInt(e.target.value) || 1 })}
+                        min="1"
+                        disabled={isLoading}
+                      />
+                      {formErrors.positions && <p className="text-red-500 text-xs">{formErrors.positions}</p>}
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="description">Job Description</Label>
+                      <Textarea
+                        id="description"
+                        value={newCampaign.description}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
+                        placeholder="Enter detailed job description"
+                        rows={4}
+                        disabled={isLoading}
+                      />
+                      {formErrors.description && <p className="text-red-500 text-xs">{formErrors.description}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={newCampaign.startDate}
+                        onChange={(e) => setNewCampaign({ ...newCampaign, startDate: e.target.value })}
+                        disabled={isLoading}
+                      />
+                    </div>
                   </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={newCampaign.location}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, location: e.target.value })}
-                      placeholder="Enter location"
-                      disabled={isLoading}
-                    />
-                    {formErrors.location && <p className="text-red-500 text-xs">{formErrors.location}</p>}
-                  </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    <Select
-                      value={newCampaign.department}
-                      onValueChange={(value) => setNewCampaign({ ...newCampaign, department: value })}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="Product">Product</SelectItem>
-                        <SelectItem value="Design">Design</SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="Sales">Sales</SelectItem>
-                        <SelectItem value="Operations">Operations</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                        <SelectItem value="HR">HR</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="jobType">Job Type</Label>
-                    <Select
-                      value={newCampaign.jobType}
-                      onValueChange={(value: "Full-time" | "Part-time" | "Contract") => setNewCampaign({ ...newCampaign, jobType: value })}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select job type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Full-time">Full-time</SelectItem>
-                        <SelectItem value="Part-time">Part-time</SelectItem>
-                        <SelectItem value="Contract">Contract</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="experienceLevel">Experience Level</Label>
-                    <Select
-                      value={newCampaign.experienceLevel}
-                      onValueChange={(value: "Junior" | "Mid-level" | "Senior") => setNewCampaign({ ...newCampaign, experienceLevel: value })}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select experience level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Junior">Junior</SelectItem>
-                        <SelectItem value="Mid-level">Mid-level</SelectItem>
-                        <SelectItem value="Senior">Senior</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="positions">Open Positions</Label>
-                    <Input
-                      id="positions"
-                      type="number"
-                      value={newCampaign.positions}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, positions: parseInt(e.target.value) || 1 })}
-                      min="1"
-                      disabled={isLoading}
-                    />
-                    {formErrors.positions && <p className="text-red-500 text-xs">{formErrors.positions}</p>}
-                  </div>
-                 
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="description">Job Description</Label>
-                    <Textarea
-                      id="description"
-                      value={newCampaign.description}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
-                      placeholder="Enter detailed job description"
-                      rows={4}
-                      disabled={isLoading}
-                    />
-                    {formErrors.description && <p className="text-red-500 text-xs">{formErrors.description}</p>}
-                  </div>
-                 
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={newCampaign.startDate}
-                      onChange={(e) => setNewCampaign({ ...newCampaign, startDate: e.target.value })}
-                      disabled={isLoading}
-                    />
+                  {/* Talent Acquisition Team */}
+                  <div className="space-y-4">
+                    <Label className="text-lg font-semibold">Talent Acquisition Team</Label>
+                    <div className="grid grid-cols-4 gap-2 p-4 border rounded-lg">
+                      <Input
+                        placeholder="Name"
+                        value={newTeamMember.name}
+                        onChange={(e) => setNewTeamMember({ ...newTeamMember, name: e.target.value })}
+                        disabled={isLoading}
+                      />
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={newTeamMember.email}
+                        onChange={(e) => setNewTeamMember({ ...newTeamMember, email: e.target.value })}
+                        disabled={isLoading}
+                      />
+                      <Select
+                        value={newTeamMember.role}
+                        onValueChange={(value: "Recruiter" | "Hiring Manager" | "Coordinator") => 
+                          setNewTeamMember({ 
+                            ...newTeamMember, 
+                            role: value,
+                            isHiringManager: value === "Hiring Manager"
+                          })
+                        }
+                        disabled={isLoading}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Recruiter">Recruiter</SelectItem>
+                          <SelectItem value="Hiring Manager">Hiring Manager</SelectItem>
+                          <SelectItem value="Coordinator">Coordinator</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={handleAddTeamMember} size="sm" disabled={isLoading}>
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    {newCampaign.talentAcquisitionTeam && newCampaign.talentAcquisitionTeam.length > 0 && (
+                      <div className="space-y-2">
+                        {newCampaign.talentAcquisitionTeam.map((member, index) => (
+                          <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <div>
+                                <p className="font-medium">{member.name}</p>
+                                <p className="text-sm text-gray-500">{member.email}</p>
+                              </div>
+                              <Badge variant={member.isHiringManager ? "default" : "secondary"}>
+                                {member.role}
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveTeamMember(member.id)}
+                              disabled={isLoading}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                            {formErrors[`teamMemberEmail${index}`] && (
+                              <p className="text-red-500 text-xs">{formErrors[`teamMemberEmail${index}`]}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
@@ -1007,12 +1153,20 @@ const HiringCampaignTracker = () => {
                         <span>Started {new Date(selectedCampaign.startDate).toLocaleDateString()}</span>
                       </div>
                       <div className="flex items-center space-x-1">
+                        <Users className="w-4 h-4" />
+                        <span>{selectedCampaign.talentAcquisitionTeam?.length || 0} team members</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
                         <Target className="w-4 h-4" />
                         <span>{selectedCampaign.experienceLevel}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <Briefcase className="w-4 h-4" />
                         <span>{selectedCampaign.jobType}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <User className="w-4 h-4" />
+                        <span>Created by: {selectedCampaign.created_by_name}</span>
                       </div>
                     </div>
                   </div>
@@ -1021,6 +1175,38 @@ const HiringCampaignTracker = () => {
                   </Badge>
                 </div>
               </CardHeader>
+            </Card>
+            {/* Talent Acquisition Team */}
+            <Card className="glass">
+              <CardHeader>
+                <CardTitle>Talent Acquisition Team</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedCampaign.talentAcquisitionTeam && selectedCampaign.talentAcquisitionTeam.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {selectedCampaign.talentAcquisitionTeam.map((member, index) => (
+                      <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                          {member.name.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <p className="font-medium">{member.name}</p>
+                          <p className="text-sm text-gray-500">{member.email}</p>
+                          <Badge variant={member.role === "Hiring Manager" ? "default" : "secondary"}>
+                            {member.role}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+                    <p className="text-xl font-medium text-gray-600 mb-2">No Team Members</p>
+                    <p className="text-gray-500">No talent acquisition team members assigned to this campaign.</p>
+                  </div>
+                )}
+              </CardContent>
             </Card>
             {/* Campaign Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1118,7 +1304,7 @@ const HiringCampaignTracker = () => {
                                 </div>
                               </div>
                               <div className="space-y-1">
-                                <div className="flexavam items-center justify-between text-sm">
+                                <div className="flex items-center justify-between text-sm">
                                   <span className="text-gray-600">Skills Match</span>
                                   <span className="font-medium">
                                     {candidate.primary_vs_primary.total_matched}/{candidate.primary_vs_primary.total_required}
@@ -1188,7 +1374,7 @@ const HiringCampaignTracker = () => {
                       if (selectedCampaign?.id) {
                         sessionStorage.setItem('campaignId', selectedCampaign.id);
                       }
-                      navigate(`/add-candidate`, {
+                      navigate(`/add-candidate/${selectedCampaign.id}`, {
                         state: {
                           campaign: {
                             campaignId: selectedCampaign?.id,
@@ -1219,7 +1405,6 @@ const HiringCampaignTracker = () => {
                       </thead>
                       <tbody>
                         {selectedCampaign.Interview.map((interview) => {
-                          // Map Interview data to Candidate interface
                           const candidate: Candidate = {
                             id: interview._id,
                             name: interview.interview_details.title,

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from login import LoginHandler
 from calendar_ops import CalendarHandler
@@ -14,8 +14,6 @@ from typing import Any, Dict, List, Optional
 from fastapi import File, UploadFile
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from campaign_tracker import CampaignTracker, ClientTracker, CampaignCreate, CampaignResponse, ClientCreate, ClientResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from bson import ObjectId
 
 app = FastAPI()
 login_handler = LoginHandler()
@@ -36,17 +34,6 @@ app.add_middleware(
 
 # Predefined time slots for UI time picker (every 30 minutes)
 TIME_SLOTS = [f"{hour:02d}:{minute:02d}" for hour in range(24) for minute in [0, 30]]
-
-# Security for session validation
-security = HTTPBearer()
-
-# Dependency for session validation
-async def verify_session(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    session_id = credentials.credentials
-    session = db.users.find_one({"session_id": session_id})
-    if not session:
-        raise HTTPException(status_code=401, detail="Invalid session")
-    return session
 
 class EventCreate(BaseModel):
     subject: str
@@ -73,56 +60,10 @@ class InterviewDetails(BaseModel):
     description: str
     duration: int
     date: str
+    preferred_timezone: str
     location: str
-    meetingType: Optional[str] = None
-    timezone: str
+    meeting_type: Optional[str] = None
 
-class PanelMember(BaseModel):
-    id: str
-    name: str
-    email: str
-    role: str
-    avatar: Optional[str] = None
-
-class TimeSlot(BaseModel):
-    id: str
-    start: str
-    end: str
-    date: str
-    available: bool
-    available_members: List[str]
-
-class RoundFeedback(BaseModel):
-    panel_member_id: str
-    rating: int
-    comments: str
-    recommendation: str
-    submitted_at: Optional[datetime] = None
-
-class InterviewRoundCreate(BaseModel):
-    candidate_id: str
-    campaign_id: str
-    round_number: int
-    status: str
-    panel: List[PanelMember]
-    details: Optional[InterviewDetails] = None
-    selected_time_slot: Optional[TimeSlot] = None
-    feedback: List[RoundFeedback] = []
-    scheduling_option: Optional[str] = None
-
-class InterviewRoundResponse(BaseModel):
-    id: str
-    candidate_id: str
-    campaign_id: str
-    round_number: int
-    status: str
-    panel: List[PanelMember]
-    details: Optional[InterviewDetails]
-    selected_time_slot: Optional[TimeSlot]
-    feedback: List[RoundFeedback]
-    scheduling_option: Optional[str]
-    created_at: datetime
-    updated_at: datetime
 
 @app.get("/")
 async def home():
@@ -369,9 +310,11 @@ class ScheduleEventRequest(BaseModel):
     slot: Dict[str, str]
     mail_template: Dict[str, str]
     candidate_email: Optional[str] = None
+    candidate_name: Optional[str] = None
+    recent_designation: Optional[str] = None
     to_emails: list[str]
     cc_emails: list[str]
-    campaign_id: Optional[str] = None
+    campaign_id: Optional[str] = None  # Add campaign_id to the request model
 
 @app.post("/schedule-event/{session_id}")
 async def schedule_event(session_id: str, request: ScheduleEventRequest):
@@ -381,7 +324,11 @@ async def schedule_event(session_id: str, request: ScheduleEventRequest):
             request.slot,
             request.mail_template,
             request.candidate_email,
-            request.campaign_id
+            request.candidate_name,
+            request.recent_designation,
+            request.campaign_id,
+            request.to_emails,
+            request.cc_emails
         )
         return JSONResponse(result)
     except HTTPException as e:
@@ -396,12 +343,12 @@ async def schedule_event(session_id: str, request: ScheduleEventRequest):
 
 class EventTrackerResponse(BaseModel):
     status: Optional[str] = None
-    candidate: Optional[Dict[str, str]] = None
+    candidate: Optional[Dict[str, str]] = None  # {name, email}
     position: Optional[str] = None
-    scheduled_time: Optional[Dict[str, Any]] = None
+    scheduled_time: Optional[Dict[str, Any]] = None  # {date, start_time, duration}
     virtual: Optional[bool] = None
-    candidate_response: Optional[Dict[str, Any]] = None
-    panel_response_status: Optional[Dict[str, Any]] = None
+    candidate_response: Optional[Dict[str, Any]] = None  # {name, email, response, response_time}
+    panel_response_status: Optional[Dict[str, Any]] = None  # {summary: {accepted, declined, tentative, pending}, responses: [{name, email, role, response, response_time}]}
 
 @app.get("/event-tracker/{session_id}", response_model=EventTrackerResponse)
 async def track_event(session_id: str):
@@ -437,13 +384,14 @@ async def update_event(session_id: str, request: EventUpdateRequest):
     except Exception as e:
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
+
 class SchedulerResponse(BaseModel):
-    interviews: List[Dict[str, Any]]
-    statistics: Dict[str, int]
+    interviews: List[Dict[str, Any]]  # List of interview details
+    statistics: Dict[str, int]        # {total, scheduled, pending, completed}
 
     class Interview(BaseModel):
         session_id: str
-        candidate: Dict[str, str]
+        candidate: Dict[str, str]     # {email, name, recent_designation, profile_id}
         event_start_time: str
         panel_emails: List[str]
 
@@ -465,22 +413,34 @@ async def create_client(
     description: str = Form(...),
     logo: Optional[UploadFile] = File(None)
 ):
+    logger.info(f"Received create client request: companyName={companyName}, location={location}, industry={industry}, description={description}")
+    if logo:
+        logger.info(f"Logo file received: filename={logo.filename}, size={logo.size}")
+    else:
+        logger.info("No logo file received")
     try:
         result = await client_tracker.create_client(companyName, location, industry, description, logo)
+        logger.info(f"Client created successfully: {result.id}")
         return JSONResponse(result.dict())
     except HTTPException as e:
+        logger.error(f"HTTP error: {e.detail}")
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
+        logger.error(f"Server error: {str(e)}")
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
 @app.get("/api/all-clients", response_model=List[ClientResponse])
 async def get_all_clients():
+    logger.info("Received get all clients request")
     try:
         result = await client_tracker.get_all_clients()
+        logger.info(f"Returning {len(result)} clients")
         return JSONResponse([client.dict() for client in result])
     except HTTPException as e:
+        logger.error(f"HTTP error: {e.detail}")
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
+        logger.error(f"Server error: {str(e)}")
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
 @app.get("/api/client/{client_id}", response_model=ClientResponse)
@@ -522,52 +482,79 @@ async def get_campaign(campaign_id: str):
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+# Pydantic models for validation
 
-@app.post("/api/interview_rounds", response_model=dict)
-async def create_interview_round(round_data: InterviewRoundCreate, session: dict = Depends(verify_session)):
+from bson import ObjectId
+
+rounds_collection = db["interview_rounds"]
+
+class PanelMember(BaseModel):
+    user_id: str
+    display_name: str
+    email: str
+    role: Optional[str] = None
+    avatar: Optional[str] = None
+
+class InterviewDetails(BaseModel):
+    title: str
+    description: str
+    duration: int
+    date: Optional[datetime] = None
+    location: str
+    meetingType: str
+    preferred_timezone: str
+
+class TimeSlot(BaseModel):
+    id: str
+    start: str
+    end: str
+    date: str
+    available: bool
+    availableMembers: List[str]
+
+class InterviewRoundData(BaseModel):
+    id: str
+    roundNumber: int
+    status: str
+    panel: List[PanelMember]
+    details: Optional[InterviewDetails] = None
+    selectedTimeSlot: Optional[TimeSlot] = None
+    schedulingOption: Optional[str] = None
+    candidateId: str
+    sessionId: Optional[str] = None
+    createdAt: datetime = datetime.utcnow()
+
+@app.post("/interview-rounds/")
+def save_interview_round(round: InterviewRoundData):
+    print("Backend: Received request to save interview round:", round.dict())
     try:
-        if not round_data.candidate_id:
-            raise HTTPException(status_code=400, detail="Candidate ID is required")
-        if not round_data.campaign_id:
-            raise HTTPException(status_code=400, detail="Campaign ID is required")
-        if round_data.round_number < 1:
-            raise HTTPException(status_code=400, detail="Round number must be positive")
-
-        # Validate panel members
-        for member in round_data.panel:
-            user = db.users.find_one({"user_id": member.id})
-            if not user:
-                raise HTTPException(status_code=404, detail=f"Panel member {member.id} not found")
-
-        round_dict = round_data.dict()
-        round_dict["created_at"] = datetime.utcnow()
-        round_dict["updated_at"] = datetime.utcnow()
-        result = db.interview_rounds.insert_one(round_dict)
-        return JSONResponse({"round_id": str(result.inserted_id)})
-    except HTTPException as e:
-        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+        round_dict = round.dict()
+        print("Backend: Storing candidateId as string:", round_dict["candidateId"])
+        print("Backend: Storing sessionId as string:", round_dict["sessionId"])
+        
+        print("Backend: Inserting round into MongoDB:", round_dict)
+        result = rounds_collection.insert_one(round_dict)
+        print("Backend: Round saved successfully with ID:", str(result.inserted_id))
+        return {"message": "Interview round saved successfully", "id": str(result.inserted_id)}
     except Exception as e:
-        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+        print("Backend: Unexpected error saving interview round:", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to save interview round: {str(e)}")
 
-@app.get("/api/interview_rounds", response_model=List[InterviewRoundResponse])
-async def get_interview_rounds(candidate_id: str, campaign_id: str, session: dict = Depends(verify_session)):
+@app.get("/interview-rounds/{candidate_id}")
+def get_interview_rounds(candidate_id: str):
+    print("Backend: Fetching interview rounds for candidate_id:", candidate_id)
     try:
-        if not candidate_id:
-            raise HTTPException(status_code=400, detail="Candidate ID is required")
-        if not campaign_id:
-            raise HTTPException(status_code=400, detail="Campaign ID is required")
-
-        rounds = []
-        cursor = db.interview_rounds.find({"candidate_id": candidate_id, "campaign_id": campaign_id})
-        for round in cursor:
-            round["id"] = str(round["_id"])
-            del round["_id"]
-            rounds.append(round)
-        return JSONResponse(rounds)
-    except HTTPException as e:
-        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+        rounds = list(rounds_collection.find({"candidateId": candidate_id}))  # Query by string
+        print("Backend: Found rounds:", rounds)
+        for round in rounds:
+            round["_id"] = str(round["_id"])
+            round["candidateId"] = str(round["candidateId"])
+            if round.get("sessionId"):
+                round["sessionId"] = str(round["sessionId"])
+        return rounds
     except Exception as e:
-        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+        print("Backend: Error fetching interview rounds:", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch interview rounds: {str(e)}")
     
 
 

@@ -9,16 +9,16 @@ import {
   Settings,
   Briefcase,
 } from "lucide-react";
-
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -45,9 +45,21 @@ export function AppSidebar() {
       className="glass border-r border-white/20"
     >
       <SidebarContent>
+        <div className="py-4 px-3">
+          <img 
+            src={state === "collapsed" 
+              ? "https://cdn-avatars.huggingface.co/v1/production/uploads/672a914b4ecb5f4a75ddc500/9sFcJ0YX5FfDI1yaH2rg4.jpeg"
+              : "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTV2BpTtkhGmUriwjhwOpjNHZAQxp5fW0bMwg&s"
+            }
+            alt="Logo"
+            className={`${
+              state === "collapsed" ? "w-8 h-8" : "max-w-65 h-18 object-contain"
+            } mx-auto transition-all duration-200`}
+          />
+        </div>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-primary font-semibold">
-            QHub Navigation
+            {state !== "collapsed" && "QHub Navigation"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -74,6 +86,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarTrigger className="w-full p-2 hover:bg-sidebar-accent/50">
+          <span className="sr-only">Toggle Sidebar</span>
+        </SidebarTrigger>
+      </SidebarFooter>
     </Sidebar>
   );
 }

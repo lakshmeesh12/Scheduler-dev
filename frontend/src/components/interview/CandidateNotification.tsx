@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format, parse } from "date-fns";
-import { ApiCandidate, scheduleEvent } from "@/api";
+import { ApiCandidate, scheduleEvent, fetchCampaignById } from "@/api";
 import { useNavigate } from "react-router-dom";
 
 interface TimeSlot {
@@ -51,6 +51,33 @@ export const CandidateNotification = ({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // Fetch talent acquisition team emails
+  useEffect(() => {
+    const fetchTeamEmails = async () => {
+      const campaignId = sessionStorage.getItem("campaignId");
+      if (!campaignId) {
+        console.error("CandidateNotification: Campaign ID not found in sessionStorage");
+        setError("Campaign ID not found. Please select a campaign.");
+        return;
+      }
+      try {
+        console.log("CandidateNotification: Fetching campaign details for campaignId:", campaignId);
+        const campaign = await fetchCampaignById(campaignId);
+        const teamEmails = campaign.talentAcquisitionTeam?.map(member => member.email) || [];
+        console.log("CandidateNotification: Fetched talent acquisition team emails:", teamEmails);
+        setCcEmails(prev => {
+          const uniqueEmails = [...new Set([...prev, ...teamEmails])];
+          return uniqueEmails.filter(email => isValidEmail(email));
+        });
+      } catch (err) {
+        console.error("CandidateNotification: Failed to fetch campaign details:", err);
+        setError(err instanceof Error ? err.message : "Failed to load campaign details.");
+      }
+    };
+
+    fetchTeamEmails();
+  }, []);
 
   const formatTime = (time: string) => {
     console.log("CandidateNotification: Formatting time for display:", time);
@@ -209,7 +236,6 @@ The Hiring Team`;
     setEmailContent(content);
     setEmailSubject(subject);
     
-    // Initialize with candidate's email in the to field
     if (candidate.email && !toEmails.includes(candidate.email)) {
       setToEmails([candidate.email]);
     }
@@ -255,10 +281,10 @@ The Hiring Team`;
           subject: emailSubject,
           body: emailContent,
         },
-        candidate_email: toEmails[0], // Primary recipient
-        to_emails: toEmails, // All To recipients
-        cc_emails: ccEmails, // All CC recipients
-        campaign_id: campaignId // Add campaign_id to the request
+        candidate_email: toEmails[0],
+        to_emails: toEmails,
+        cc_emails: ccEmails,
+        campaign_id: campaignId
       };
 
       console.log("CandidateNotification: Sending schedule-event request:", request);
@@ -267,6 +293,7 @@ The Hiring Team`;
       console.log("CandidateNotification: Schedule-event response:", response);
 
       setSent(true);
+      onNotificationSent(); // Trigger parent callback after successful send
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to send interview invitation.";
       setError(errorMessage);
@@ -300,7 +327,6 @@ The Hiring Team`;
           <Button
             onClick={() => {
               console.log("CandidateNotification: Navigating back to candidate details");
-              onNotificationSent(); // Trigger parent callback
               navigate(`/candidate/${candidate.profile_id}`);
             }}
             className="bg-blue-600 hover:bg-blue-700"
@@ -382,7 +408,6 @@ The Hiring Team`;
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Subject Line */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Subject
@@ -395,7 +420,6 @@ The Hiring Team`;
             />
           </div>
 
-          {/* To Recipients */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               To Recipients
@@ -425,18 +449,21 @@ The Hiring Team`;
             </p>
           </div>
 
-          {/* CC Recipients */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               CC Recipients
             </label>
             <div className="border border-gray-300 rounded-md p-2 min-h-[40px] flex flex-wrap items-center gap-2">
               {ccEmails.map((email, index) => (
-                <Badge key={index} variant="secondary" className="bg-gray-100 text-gray-800">
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="bg-blue-100 text-blue-800 font-medium px-2.5 py-0.5 rounded-full"
+                >
                   {email}
                   <button
                     onClick={() => removeEmail(email, 'cc')}
-                    className="ml-1 hover:text-red-600"
+                    className="ml-1 hover:text-red-500 transition-colors duration-200"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -451,11 +478,10 @@ The Hiring Team`;
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Enter email addresses separated by commas
+              Talent acquisition team members are automatically added. Add more emails separated by commas.
             </p>
           </div>
 
-          {/* Email Template */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email Template

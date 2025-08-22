@@ -2,7 +2,6 @@ import axios from 'axios';
 import { AxiosRequestConfig } from "axios"; // should work in v1.6+
 
 
-
 const API_BASE_URL = 'http://localhost:8000'; // Update if your backend runs on a different URL/port
 const NODE_API_BASE_URL = 'http://localhost:3001';
 
@@ -26,18 +25,15 @@ export interface LoginResponse {
   login_url: string;
 }
 
-// Interface for PanelSelection payload
 export interface PanelSelection {
   user_ids: string[];
-  created_by: string; // Added created_by field
+  created_by: string;
 }
 
-// Interface for PanelSelection response
 export interface PanelSelectionResponse {
   session_id: string;
 }
 
-// Interface for InterviewDetails payload
 export interface InterviewDetails {
   title: string;
   description: string;
@@ -47,19 +43,16 @@ export interface InterviewDetails {
   location: string;
 }
 
-// Interface for InterviewDetails response
 export interface InterviewDetailsResponse {
   message: string;
 }
 
-// Interface for TimeSlot in availability response
 export interface TimeSlot {
-  start: string; // e.g., "11:30 AM"
-  end: string; // e.g., "12:30 PM"
-  date: string; // e.g., "2025-08-28"
+  start: string;
+  end: string;
+  date: string;
 }
 
-// Interface for Availability response
 export interface AvailabilityResponse {
   slots: TimeSlot[];
   metadata: {
@@ -72,12 +65,52 @@ export interface AvailabilityResponse {
   };
 }
 
-// Interface for API error response
 export interface ApiError {
   error: string;
 }
 
-// Configure axios instance
+export interface PanelMember {
+  user_id: string;
+  display_name: string;
+  email: string;
+  role?: string; // Made role optional
+  avatar?: string;
+}
+
+export interface InterviewRoundTimeSlot {
+  id: string;
+  start: string;
+  end: string;
+  date: string;
+  available: boolean;
+  availableMembers: string[];
+}
+
+export interface InterviewRoundData {
+  id: string;
+  roundNumber: number;
+  status: 'draft' | 'scheduled' | 'completed';
+  panel: PanelMember[];
+  details: InterviewDetails | null;
+  selectedTimeSlot: InterviewRoundTimeSlot | null;
+  schedulingOption: 'direct' | 'candidate_choice' | null;
+  candidateId: string;
+  sessionId: string | null;
+  createdAt?: string;
+}
+
+export interface InterviewRoundResponse {
+  message: string;
+  id: string;
+}
+
+export interface ApiCandidate {
+  profile_id: string;
+  name: string;
+  email?: string;
+  recent_designation?: string;
+}
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -85,12 +118,10 @@ const apiClient = axios.create({
   },
 });
 
-// Initiate Microsoft login
 export const initiateLogin = (): string => {
-  return 'http://localhost:8000/login'; // Directly return the backend login endpoint
+  return 'http://localhost:8000/login';
 };
 
-// Fetch all users
 export const fetchUsers = async (): Promise<User[]> => {
   try {
     const response = await apiClient.get<{ users: User[] }>('/users');
@@ -103,12 +134,11 @@ export const fetchUsers = async (): Promise<User[]> => {
   }
 };
 
-// Save panel selection
 export const savePanelSelection = async (userIds: string[], createdBy: string): Promise<string> => {
   try {
     const response = await apiClient.post<PanelSelectionResponse>('/panel-selection', {
       user_ids: userIds,
-      created_by: createdBy, // Include created_by in the request body
+      created_by: createdBy,
     });
     return response.data.session_id;
   } catch (error) {
@@ -119,7 +149,6 @@ export const savePanelSelection = async (userIds: string[], createdBy: string): 
   }
 };
 
-// Save interview details
 export const saveInterviewDetails = async (sessionId: string, details: InterviewDetails): Promise<string> => {
   try {
     const response = await apiClient.post<InterviewDetailsResponse>(`/interview-details/${sessionId}`, details);
@@ -132,7 +161,6 @@ export const saveInterviewDetails = async (sessionId: string, details: Interview
   }
 };
 
-// Fetch available slots (working hours)
 export const fetchAvailableSlots = async (sessionId: string): Promise<AvailabilityResponse> => {
   try {
     const response = await apiClient.get<AvailabilityResponse>(`/available-slots/${sessionId}`);
@@ -145,7 +173,6 @@ export const fetchAvailableSlots = async (sessionId: string): Promise<Availabili
   }
 };
 
-// Fetch all available slots (all hours)
 export const fetchAllAvailableSlots = async (sessionId: string): Promise<AvailabilityResponse> => {
   try {
     const response = await apiClient.get<AvailabilityResponse>(`/all-available-slots/${sessionId}`);
@@ -155,6 +182,30 @@ export const fetchAllAvailableSlots = async (sessionId: string): Promise<Availab
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch all available slots');
     }
     throw new Error('Network error while fetching all available slots');
+  }
+};
+
+export const saveInterviewRound = async (roundData: InterviewRoundData): Promise<InterviewRoundResponse> => {
+  try {
+    console.log("api.ts: Sending request to save interview round:", roundData);
+    // Ensure panel members have a default role if not provided
+    const updatedRoundData = {
+      ...roundData,
+      panel: roundData.panel.map(member => ({
+        ...member,
+        role: member.role || "Interviewer", // Default role
+      })),
+    };
+    const response = await apiClient.post<InterviewRoundResponse>('/interview-rounds/', updatedRoundData);
+    console.log("api.ts: Interview round saved successfully:", response.data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("api.ts: Error response from backend:", error.response.status, error.response.data);
+      throw new Error((error.response.data as ApiError).error || `HTTP error ${error.response.status}: Failed to save interview round`);
+    }
+    console.error("api.ts: Network error saving interview round:", error);
+    throw new Error('Network error while saving interview round');
   }
 };
 
@@ -315,6 +366,11 @@ interface ScheduleEventRequest {
     body: string;
   };
   candidate_email: string | null;
+  candidate_name?: string | null;
+  recent_designation?: string | null;
+  campaign_id?: string | null;
+  to_emails: string[];
+  cc_emails: string[];
 }
 
 interface ScheduleEventResponse {
@@ -550,36 +606,36 @@ export interface Interview {
   };
 }
 
-export interface HiringCampaign {
-  id: string;
-  jobTitle: string;
-  department: string;
-  positions: number;
-  status: "Active" | "Completed" | "On Hold";
-  startDate: string;
-  endDate?: string;
-  location: string;
-  candidatesApplied: number;
-  candidatesHired: number;
-  currentRound: string;
-  description: string;
-  experienceLevel: "Junior" | "Mid-level" | "Senior";
-  jobType: "Full-time" | "Part-time" | "Contract";
-  client_id: string;
-  Interview?: Interview[];
-}
+// export interface HiringCampaign {
+//   id: string;
+//   jobTitle: string;
+//   department: string;
+//   positions: number;
+//   status: "Active" | "Completed" | "On Hold";
+//   startDate: string;
+//   endDate?: string;
+//   location: string;
+//   candidatesApplied: number;
+//   candidatesHired: number;
+//   currentRound: string;
+//   description: string;
+//   experienceLevel: "Junior" | "Mid-level" | "Senior";
+//   jobType: "Full-time" | "Part-time" | "Contract";
+//   client_id: string;
+//   Interview?: Interview[];
+// }
 
-export interface CampaignCreate {
-  jobTitle: string;
-  description: string;
-  experienceLevel: "Junior" | "Mid-level" | "Senior";
-  positions: number;
-  location: string;
-  department: string;
-  jobType: "Full-time" | "Part-time" | "Contract";
-  startDate: string;
-  client_id: string;
-}
+// export interface CampaignCreate {
+//   jobTitle: string;
+//   description: string;
+//   experienceLevel: "Junior" | "Mid-level" | "Senior";
+//   positions: number;
+//   location: string;
+//   department: string;
+//   jobType: "Full-time" | "Part-time" | "Contract";
+//   startDate: string;
+//   client_id: string;
+// }
 
 export interface Client {
   id: string;
@@ -595,17 +651,26 @@ export interface ClientCreate {
   location: string;
   industry: string;
   description: string;
+  logo?: File;
 }
 
-export const createClient = async (client: ClientCreate, logo?: File): Promise<Client> => {
+// export const apiClient = axios.create({
+//   baseURL: 'http://localhost:8000',
+//   timeout: 10000,
+// });
+
+export const createClient = async (client: ClientCreate): Promise<Client> => {
   try {
     const formData = new FormData();
     formData.append('companyName', client.companyName);
     formData.append('location', client.location);
     formData.append('industry', client.industry);
     formData.append('description', client.description);
-    if (logo) {
-      formData.append('logo', logo);
+    if (client.logo) {
+      console.log("Appending logo to FormData:", client.logo.name, client.logo.type);
+      formData.append('logo', client.logo);
+    } else {
+      console.log("No logo file provided for FormData");
     }
 
     const config: AxiosRequestConfig = {
@@ -614,24 +679,32 @@ export const createClient = async (client: ClientCreate, logo?: File): Promise<C
       },
     };
 
+    console.log("Sending create client request with FormData");
     const response = await apiClient.post<Client>('/api/new-client', formData, config);
+    console.log("Create client response:", response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
+      console.error("Create client API error:", error.response.data);
       throw new Error((error.response.data as ApiError).error || 'Failed to create client');
     }
+    console.error("Create client network error:", error);
     throw new Error('Network error while creating client');
   }
 };
 
 export const fetchAllClients = async (): Promise<Client[]> => {
   try {
+    console.log("Sending fetch all clients request");
     const response = await apiClient.get<Client[]>('/api/all-clients');
+    console.log("Fetch all clients response:", response.data);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
+      console.error("Fetch clients API error:", error.response.data);
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch clients');
     }
+    console.error("Fetch clients network error:", error);
     throw new Error('Network error while fetching clients');
   }
 };
@@ -648,6 +721,50 @@ export const fetchClientById = async (clientId: string): Promise<Client> => {
   }
 };
 
+export interface TalentAcquisitionTeamMember {
+  name: string;
+  email: string;
+  role: "Recruiter" | "Hiring Manager" | "Coordinator";
+}
+
+// Update the CampaignCreate interface to include created_by and talentAcquisitionTeam
+export interface CampaignCreate {
+  jobTitle: string;
+  description: string;
+  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  positions: number;
+  location: string;
+  department: string;
+  jobType: "Full-time" | "Part-time" | "Contract";
+  startDate: string;
+  client_id: string;
+  created_by: string;
+  talentAcquisitionTeam: TalentAcquisitionTeamMember[];
+}
+
+// Update the HiringCampaign interface to include created_by, created_by_name, and talentAcquisitionTeam
+export interface HiringCampaign {
+  id: string;
+  jobTitle: string;
+  department: string;
+  positions: number;
+  status: "Active" | "Completed" | "On Hold";
+  startDate: string;
+  endDate?: string;
+  location: string;
+  candidatesApplied: number;
+  candidatesHired: number;
+  currentRound: string;
+  description: string;
+  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  jobType: "Full-time" | "Part-time" | "Contract";
+  client_id: string;
+  created_by: string;
+  created_by_name: string;
+  talentAcquisitionTeam: TalentAcquisitionTeamMember[];
+  Interview?: Interview[];
+}
+
 export const fetchAllCampaigns = async (clientId?: string): Promise<HiringCampaign[]> => {
   try {
     const params = clientId ? { client_id: clientId } : {};
@@ -661,15 +778,34 @@ export const fetchAllCampaigns = async (clientId?: string): Promise<HiringCampai
   }
 };
 
-export const createCampaign = async (campaign: CampaignCreate): Promise<HiringCampaign> => {
+export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'>): Promise<HiringCampaign> => {
   try {
-    const response = await apiClient.post<HiringCampaign>('/api/new-campaign', campaign);
+    const userId = sessionStorage.getItem('user_id');
+    if (!userId) {
+      console.error('No user_id found in sessionStorage');
+      throw new Error('User not authenticated. Please log in.');
+    }
+
+    const payload: CampaignCreate = {
+      ...campaign,
+      created_by: userId,
+      talentAcquisitionTeam: campaign.talentAcquisitionTeam.map(({ name, email, role }) => ({
+        name,
+        email,
+        role,
+      })),
+    };
+    console.log('Sending payload to /api/new-campaign:', payload);
+
+    const response = await apiClient.post<HiringCampaign>('/api/new-campaign', payload);
+    console.log('API response:', response.data);
     return response.data;
   } catch (error) {
+    console.error('Error in createCampaign:', error);
     if (axios.isAxiosError(error) && error.response) {
       throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
     }
-    throw new Error('Network error while creating campaign');
+    throw new Error(error instanceof Error ? error.message : 'Network error while creating campaign');
   }
 };
 

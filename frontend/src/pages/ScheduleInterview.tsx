@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Plus, Users, CheckCircle, AlertTriangle, Star, BarChart, Download, Bell } from "lucide-react";
+import { ArrowLeft, Calendar, Plus, Bell, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InterviewRound, InterviewRoundData, PanelMember, InterviewDetails, TimeSlot, RoundFeedback } from "@/components/interview/InterviewRound";
+import { InterviewRound, InterviewRoundData } from "@/components/interview/InterviewRound";
 import { ReminderSettings, ReminderConfig } from "@/components/interview/ReminderSettings";
 import { InterviewStatusProgress, InterviewStatus } from "@/components/interview/InterviewStatusProgress";
 import { fetchProfileById, ApiCandidate } from "@/api";
@@ -26,11 +23,53 @@ const ScheduleInterview = () => {
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Load data from backend and localStorage
   useEffect(() => {
     console.log("ScheduleInterview - user_id from localStorage:", localStorage.getItem("user_id"));
     const storedSessionId = localStorage.getItem("session_id");
     setSessionId(storedSessionId);
     console.log("ScheduleInterview - session_id from localStorage:", storedSessionId);
+
+    // Load persisted data from localStorage
+    const savedRounds = localStorage.getItem(`interview_rounds_${id}`);
+    const savedActiveRoundId = localStorage.getItem(`active_round_id_${id}`);
+    const savedCandidateStatus = localStorage.getItem(`candidate_status_${id}`);
+    const savedReminderConfig = localStorage.getItem(`reminder_config_${id}`);
+    const savedResponseStatus = localStorage.getItem(`response_status_${id}`);
+
+    if (savedRounds) {
+      setRounds(JSON.parse(savedRounds));
+    }
+    if (savedActiveRoundId) {
+      setActiveRoundId(savedActiveRoundId);
+    }
+    if (savedCandidateStatus) {
+      setCandidateStatus(savedCandidateStatus as typeof candidateStatus);
+    }
+    if (savedReminderConfig) {
+      setReminderConfig(JSON.parse(savedReminderConfig));
+    }
+    if (savedResponseStatus) {
+      setResponseStatus(savedResponseStatus as typeof responseStatus);
+    }
+
+    // Load rounds from backend
+    const loadRounds = async () => {
+      try {
+        const response = await fetch(`/api/interview-rounds/${id}`);
+        if (response.ok) {
+          const backendRounds = await response.json();
+          if (backendRounds.length > 0) {
+            setRounds(backendRounds);
+            setActiveRoundId(backendRounds[0].id);
+            localStorage.setItem(`interview_rounds_${id}`, JSON.stringify(backendRounds));
+            localStorage.setItem(`active_round_id_${id}`, backendRounds[0].id);
+          }
+        }
+      } catch (error) {
+        console.error("ScheduleInterview: Error loading rounds from backend:", error);
+      }
+    };
 
     if (id) {
       const loadProfile = async () => {
@@ -39,6 +78,7 @@ const ScheduleInterview = () => {
           const profile = await fetchProfileById(id);
           setCandidate(profile);
           setLoading(false);
+          await loadRounds();
         } catch (error) {
           setError(error instanceof Error ? error.message : 'Failed to fetch candidate profile');
           setLoading(false);
@@ -48,11 +88,41 @@ const ScheduleInterview = () => {
     }
   }, [id]);
 
+  // Save rounds to localStorage whenever they change
+  useEffect(() => {
+    if (rounds.length > 0) {
+      localStorage.setItem(`interview_rounds_${id}`, JSON.stringify(rounds));
+    }
+  }, [rounds, id]);
+
+  // Save activeRoundId to localStorage whenever it changes
+  useEffect(() => {
+    if (activeRoundId) {
+      localStorage.setItem(`active_round_id_${id}`, activeRoundId);
+    }
+  }, [activeRoundId, id]);
+
+  // Save candidateStatus to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`candidate_status_${id}`, candidateStatus);
+  }, [candidateStatus, id]);
+
+  // Save reminderConfig to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`reminder_config_${id}`, JSON.stringify(reminderConfig));
+  }, [reminderConfig, id]);
+
+  // Save responseStatus to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`response_status_${id}`, responseStatus);
+  }, [responseStatus, id]);
+
+  // Initialize first round if no rounds exist
   useEffect(() => {
     if (rounds.length === 0) {
       const firstRound: InterviewRoundData = {
-        id: 'round-1', roundNumber: 1, status: 'draft', panel: [], details: null, 
-        selectedTimeSlot: null, feedback: [], schedulingOption: null
+        id: 'round-1', roundNumber: 1, status: 'draft', panel: [], details: null,
+        selectedTimeSlot: null, schedulingOption: null
       };
       setRounds([firstRound]);
       setActiveRoundId(firstRound.id);
@@ -62,7 +132,7 @@ const ScheduleInterview = () => {
   const addNewRound = () => {
     const newRound: InterviewRoundData = {
       id: `round-${rounds.length + 1}`, roundNumber: rounds.length + 1, status: 'draft',
-      panel: [], details: null, selectedTimeSlot: null, feedback: [], schedulingOption: null
+      panel: [], details: null, selectedTimeSlot: null, schedulingOption: null
     };
     setRounds([...rounds, newRound]);
     setActiveRoundId(newRound.id);
@@ -119,12 +189,10 @@ const ScheduleInterview = () => {
     
     const hasScheduledRounds = rounds.some(r => r.status === 'scheduled');
     const hasCompletedRounds = rounds.some(r => r.status === 'completed');
-    const allRoundsComplete = rounds.every(r => r.status === 'feedback_complete');
     
     if (responseStatus === 'rejected') return 'declined';
     if (hasScheduledRounds && responseStatus === 'accepted') return 'interview_scheduled';
-    if (hasCompletedRounds && !allRoundsComplete) return 'slot_confirmation';
-    if (allRoundsComplete) return 'interview_completed';
+    if (hasCompletedRounds) return 'interview_completed';
     
     return 'candidate_notification';
   };
@@ -146,11 +214,10 @@ const ScheduleInterview = () => {
                 </p>
               </div>
             </div>
-
             <div className="flex items-center gap-4">
               <Link to="/reminder-settings">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="glass border-gray-200"
                 >
@@ -158,10 +225,9 @@ const ScheduleInterview = () => {
                   Reminders
                 </Button>
               </Link>
-              
               <Link to={sessionId ? `/event-tracker/${sessionId}` : '#'}>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="glass border-blue-200 text-blue-700"
                   disabled={!sessionId}
@@ -170,7 +236,6 @@ const ScheduleInterview = () => {
                   Track Event
                 </Button>
               </Link>
-
               <Link to={`/candidate/${id}`}>
                 <Button variant="outline" className="glass border-gray-200">
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -181,12 +246,10 @@ const ScheduleInterview = () => {
           </div>
         </div>
       </header>
-
       {/* Status Progress */}
       <div className="w-full px-6 py-4 bg-white/50">
         <InterviewStatusProgress currentStatus={getOverallStatus()} />
       </div>
-
       <main className="w-full px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold gradient-text">Interview Rounds</h2>
@@ -195,7 +258,6 @@ const ScheduleInterview = () => {
             Add Another Round
           </Button>
         </div>
-
         <div className="space-y-6">
           {rounds.map((round) => (
             <InterviewRound

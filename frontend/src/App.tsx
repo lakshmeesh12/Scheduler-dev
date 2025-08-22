@@ -1,3 +1,5 @@
+//App.tsx
+
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -16,11 +18,13 @@ import ScheduleInterview from "./pages/ScheduleInterview";
 import ReminderSettings from "./pages/ReminderSettings";
 import EventTracker from "./pages/EventTracker";
 import EventTrackerList from "./pages/EventTrackerList";
-import HiringCampaignTracker from "./pages/HiringCampaignTracker";
 import PanelMembers from "./pages/PanelMembers";
 import Scheduler from "./pages/Scheduler";
 import NotFound from "./pages/NotFound";
 import { Button } from "@/components/ui/button";
+import ClientDashboard from "./pages/ClientDashboard";
+import CampaignManager from "./pages/CampaignManager";
+import CandidateSearch from "./pages/CandidateSearch";
 
 const queryClient = new QueryClient();
 
@@ -113,9 +117,29 @@ const App = () => {
               <Route path="/" element={<Login />} />
               <Route
                 path="/dashboard"
+                element={<Navigate to="/client-dashboard" replace />}
+              />
+              <Route
+                path="/client-dashboard"
                 element={
                   <ProtectedRoute>
-                    <AppLayout><HiringCampaignTracker /></AppLayout>
+                    <AppLayout><ClientDashboard /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campaign-manager/:clientId"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><CampaignManager /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/candidate-search/:campaignId"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><CandidateSearch /></AppLayout>
                   </ProtectedRoute>
                 }
               />
@@ -185,11 +209,7 @@ const App = () => {
               />
               <Route
                 path="/hiring-campaign-tracker"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout><HiringCampaignTracker /></AppLayout>
-                  </ProtectedRoute>
-                }
+                element={<Navigate to="/client-dashboard" replace />}
               />
               <Route
                 path="/reminder-settings"
