@@ -86,18 +86,18 @@ export interface InterviewRoundTimeSlot {
   availableMembers: string[];
 }
 
-export interface InterviewRoundData {
-  id: string;
-  roundNumber: number;
-  status: 'draft' | 'scheduled' | 'completed';
-  panel: PanelMember[];
-  details: InterviewDetails | null;
-  selectedTimeSlot: InterviewRoundTimeSlot | null;
-  schedulingOption: 'direct' | 'candidate_choice' | null;
-  candidateId: string;
-  sessionId: string | null;
-  createdAt?: string;
-}
+// export interface InterviewRoundData {
+//   id: string;
+//   roundNumber: number;
+//   status: 'draft' | 'scheduled' | 'completed';
+//   panel: PanelMember[];
+//   details: InterviewDetails | null;
+//   selectedTimeSlot: InterviewRoundTimeSlot | null;
+//   schedulingOption: 'direct' | 'candidate_choice' | null;
+//   candidateId: string;
+//   sessionId: string | null;
+//   createdAt?: string;
+// }
 
 export interface InterviewRoundResponse {
   message: string;
@@ -185,15 +185,45 @@ export const fetchAllAvailableSlots = async (sessionId: string): Promise<Availab
   }
 };
 
+export interface InterviewRoundData {
+  id: string;
+  roundNumber: number;
+  status: 'draft' | 'scheduled' | 'completed';
+  panel: PanelMember[];
+  details: InterviewDetails | null;
+  selectedTimeSlot: InterviewRoundTimeSlot | null;
+  schedulingOption: 'direct' | 'candidate_choice' | null;
+  candidateId: string;
+  campaignId: string;
+  clientId: string;
+  sessionId: string | null;
+  createdAt?: string;
+}
+
+export const fetchInterviewRounds = async (candidateId: string, campaignId: string, clientId: string): Promise<InterviewRoundData[]> => {
+  try {
+    console.log("api.ts: Fetching interview rounds for candidateId:", candidateId, "campaignId:", campaignId, "clientId:", clientId);
+    const response = await apiClient.get<InterviewRoundData[]>(`/interview-rounds/${candidateId}/${campaignId}/${clientId}`);
+    console.log("api.ts: Interview rounds fetched successfully:", response.data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("api.ts: Error response from backend:", error.response.status, error.response.data);
+      throw new Error((error.response.data as ApiError).error || `HTTP error ${error.response.status}: Failed to fetch interview rounds`);
+    }
+    console.error("api.ts: Network error fetching interview rounds:", error);
+    throw new Error('Network error while fetching interview rounds');
+  }
+};
+
 export const saveInterviewRound = async (roundData: InterviewRoundData): Promise<InterviewRoundResponse> => {
   try {
     console.log("api.ts: Sending request to save interview round:", roundData);
-    // Ensure panel members have a default role if not provided
     const updatedRoundData = {
       ...roundData,
       panel: roundData.panel.map(member => ({
         ...member,
-        role: member.role || "Interviewer", // Default role
+        role: member.role || "Interviewer",
       })),
     };
     const response = await apiClient.post<InterviewRoundResponse>('/interview-rounds/', updatedRoundData);
@@ -637,6 +667,14 @@ export interface Interview {
 //   client_id: string;
 // }
 
+export interface ClientCreate {
+  companyName: string;
+  location: string;
+  industry: string;
+  description: string;
+  logo?: File;
+}
+
 export interface Client {
   id: string;
   companyName: string;
@@ -646,18 +684,9 @@ export interface Client {
   logoPath?: string;
 }
 
-export interface ClientCreate {
-  companyName: string;
-  location: string;
-  industry: string;
-  description: string;
-  logo?: File;
+export interface ApiError {
+  error: string;
 }
-
-// export const apiClient = axios.create({
-//   baseURL: 'http://localhost:8000',
-//   timeout: 10000,
-// });
 
 export const createClient = async (client: ClientCreate): Promise<Client> => {
   try {
@@ -727,7 +756,6 @@ export interface TalentAcquisitionTeamMember {
   role: "Recruiter" | "Hiring Manager" | "Coordinator";
 }
 
-// Update the CampaignCreate interface to include created_by and talentAcquisitionTeam
 export interface CampaignCreate {
   jobTitle: string;
   description: string;
@@ -738,11 +766,11 @@ export interface CampaignCreate {
   jobType: "Full-time" | "Part-time" | "Contract";
   startDate: string;
   client_id: string;
+  campaign_id: string; // Add campaign_id
   created_by: string;
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
 }
 
-// Update the HiringCampaign interface to include created_by, created_by_name, and talentAcquisitionTeam
 export interface HiringCampaign {
   id: string;
   jobTitle: string;
@@ -759,22 +787,60 @@ export interface HiringCampaign {
   experienceLevel: "Junior" | "Mid-level" | "Senior";
   jobType: "Full-time" | "Part-time" | "Contract";
   client_id: string;
+  campaign_id: string; // Add campaign_id
   created_by: string;
   created_by_name: string;
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
   Interview?: Interview[];
 }
 
-export const fetchAllCampaigns = async (clientId?: string): Promise<HiringCampaign[]> => {
+export interface ManagerCampaignCreate {
+  title: string;
+  description: string;
+  contactPerson: string;
+  contactNumber: string;
+  location: string;
+  startDate: string;
+  client_id: string;
+}
+
+export interface ManagerCampaign {
+  id: string;
+  title: string;
+  description: string;
+  contactPerson: string;
+  contactNumber: string;
+  location: string;
+  startDate: string;
+  client_id: string;
+}
+
+export const fetchAllCampaigns = async (clientId: string, campaignId: string): Promise<HiringCampaign[]> => {
   try {
-    const params = clientId ? { client_id: clientId } : {};
+    if (!clientId || clientId.trim() === '' || clientId.toLowerCase() === 'none') {
+      console.error('fetchAllCampaigns: Invalid clientId', clientId);
+      throw new Error('Client ID is required to fetch campaigns');
+    }
+    if (!campaignId || campaignId.trim() === '' || campaignId.toLowerCase() === 'none') {
+      console.error('fetchAllCampaigns: Invalid campaignId', campaignId);
+      throw new Error('Campaign ID is required to fetch campaigns');
+    }
+    const params: { client_id: string; campaign_id: string } = { 
+      client_id: clientId,
+      campaign_id: campaignId
+    };
+    console.log('fetchAllCampaigns: Sending request with params:', JSON.stringify(params, null, 2));
+    console.log('fetchAllCampaigns: Request URL:', `/api/all-campaigns?client_id=${encodeURIComponent(clientId)}&campaign_id=${encodeURIComponent(campaignId)}`);
     const response = await apiClient.get<HiringCampaign[]>('/api/all-campaigns', { params });
+    console.log('fetchAllCampaigns: Response received:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
+    console.error('fetchAllCampaigns: Error:', error);
     if (axios.isAxiosError(error) && error.response) {
+      console.error('fetchAllCampaigns: Error response:', JSON.stringify(error.response.data, null, 2));
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaigns');
     }
-    throw new Error('Network error while fetching campaigns');
+    throw new Error(error instanceof Error ? error.message : 'Network error while fetching campaigns');
   }
 };
 
@@ -795,7 +861,7 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
         role,
       })),
     };
-    console.log('Sending payload to /api/new-campaign:', payload);
+    console.log('Sending payload to /api/new-campaign:', JSON.stringify(payload, null, 2)); // Enhanced logging
 
     const response = await apiClient.post<HiringCampaign>('/api/new-campaign', payload);
     console.log('API response:', response.data);
@@ -803,6 +869,7 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
   } catch (error) {
     console.error('Error in createCampaign:', error);
     if (axios.isAxiosError(error) && error.response) {
+      console.error('Create campaign API error:', error.response.data);
       throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
     }
     throw new Error(error instanceof Error ? error.message : 'Network error while creating campaign');
@@ -818,5 +885,58 @@ export const fetchCampaignById = async (campaignId: string): Promise<HiringCampa
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaign');
     }
     throw new Error('Network error while fetching campaign');
+  }
+};
+
+export const createManagerCampaign = async (campaign: ManagerCampaignCreate): Promise<ManagerCampaign> => {
+  try {
+    console.log('Sending payload to /api/create-campaign:', campaign);
+    const response = await apiClient.post<ManagerCampaign>('/api/create-campaign', campaign);
+    console.log('Create manager campaign response:', response.data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Create manager campaign API error:", error.response.data);
+      throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
+    }
+    console.error("Create manager campaign network error:", error);
+    throw new Error('Network error while creating campaign');
+  }
+};
+
+export const fetchAllManagerCampaigns = async (clientId?: string): Promise<ManagerCampaign[]> => {
+  try {
+    const params = clientId ? { client_id: clientId } : {};
+    console.log("Sending fetch all manager campaigns request with params:", params);
+    const response = await apiClient.get<ManagerCampaign[]>('/api/get-campaigns', { params });
+    console.log("Fetch all manager campaigns response:", response.data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Fetch manager campaigns API error:", error.response.data);
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaigns');
+    }
+    console.error("Fetch manager campaigns network error:", error);
+    throw new Error('Network error while fetching campaigns');
+  }
+};
+
+export const fetchManagerCampaignById = async (campaignId: string): Promise<ManagerCampaign> => {
+  try {
+    if (!campaignId || campaignId.trim() === '' || campaignId.toLowerCase() === 'none') {
+      console.error('fetchManagerCampaignById: Invalid campaignId', campaignId);
+      throw new Error('Campaign ID is required to fetch campaign');
+    }
+    console.log('fetchManagerCampaignById: Sending request for campaignId:', campaignId);
+    const response = await apiClient.get<ManagerCampaign>(`/api/each-campaign/${campaignId}`);
+    console.log('fetchManagerCampaignById: Response received:', JSON.stringify(response.data, null, 2));
+    return response.data;
+  } catch (error) {
+    console.error('fetchManagerCampaignById: Error:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('fetchManagerCampaignById: Error response:', JSON.stringify(error.response.data, null, 2));
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaign');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Network error while fetching campaign');
   }
 };

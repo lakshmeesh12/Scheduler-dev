@@ -76,7 +76,7 @@ const Login = () => {
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold gradient-text">QHub</h1>
+                <h1 className="text-4xl font-bold gradient-text">QHire</h1>
                 <p className="text-lg text-gray-600">Enterprise Candidate Search</p>
               </div>
             </div>
@@ -129,11 +129,11 @@ const Login = () => {
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold gradient-text">QHub</h1>
+                  <h1 className="text-2xl font-bold gradient-text">QHire</h1>
                 </div>
               </div>
               <CardTitle className="text-2xl font-bold text-gray-800">Welcome Back</CardTitle>
-              <p className="text-gray-600">Sign in to your QHub account</p>
+              <p className="text-gray-600">Sign in to your QHire account</p>
             </CardHeader>
             <CardContent className="space-y-6">
               <form onSubmit={handleLogin} className="space-y-4">

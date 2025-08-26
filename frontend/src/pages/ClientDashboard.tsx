@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchAllClients, createClient, Client, ClientCreate } from "@/api";
+import QChat from "@/components/QChat"; // Added import
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -120,7 +121,7 @@ const ClientDashboard = () => {
                 <Building className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold gradient-text">Client Dashboard</h1>
+                <h1 className="text-2xl font-bold gradient-text">Clients</h1>
                 <p className="text-sm text-gray-600">Enterprise Hiring Management</p>
               </div>
             </div>
@@ -166,7 +167,7 @@ const ClientDashboard = () => {
                 <Card
                   key={client.id}
                   className="glass hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105"
-                  onClick={() => navigate(`/campaign-manager/${client.id}`)}
+                  onClick={() => navigate(`/campaign-dashboard/${client.id}`)}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">
@@ -310,6 +311,7 @@ const ClientDashboard = () => {
           </Dialog>
         </div>
       </main>
+      <QChat /> {/* Added QChat component */}
     </div>
   );
 };

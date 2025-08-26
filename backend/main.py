@@ -13,7 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Any, Dict, List, Optional
 from fastapi import File, UploadFile
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from campaign_tracker import CampaignTracker, ClientTracker, CampaignCreate, CampaignResponse, ClientCreate, ClientResponse
+from campaign_tracker import CampaignTracker as CampaignManager
+from campaign_tracker import CampaignTracker, ClientTracker, ClientResponse, CampaignCreate, CampaignResponse, ManagerCampaignCreate, ManagerCampaignResponse, CampaignManager
 
 app = FastAPI()
 login_handler = LoginHandler()
@@ -21,6 +22,7 @@ calendar_handler = CalendarHandler()
 event_scheduler = EventScheduler()
 campaign_tracker = CampaignTracker()
 client_tracker = ClientTracker()
+campaign_manager = CampaignManager()
 mongo_client = MongoClient("mongodb://localhost:27017")
 db = mongo_client["calendar_app"]
 
@@ -456,31 +458,98 @@ async def get_client(client_id: str):
 @app.post("/api/new-campaign", response_model=CampaignResponse)
 async def create_campaign(campaign: CampaignCreate):
     try:
-        result = await campaign_tracker.create_campaign(campaign)
+        result = await campaign_tracker.create_campaign(campaign)  # Changed to campaign_tracker
+        return JSONResponse(result.dict())
+    except HTTPException as e:
+        logger.error(f"Create campaign error: {e.detail}")
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error in create_campaign: {str(e)}")
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+# class CampaignResponse(BaseModel):
+#     id: str
+#     title: str
+#     description: str
+#     contactPerson: str
+#     contactNumber: str
+#     location: str
+#     startDate: str
+#     client_id: str
+@app.get("/api/all-campaigns", response_model=List[CampaignResponse])
+async def get_all_campaigns(client_id: str, campaign_id: str, request: Request = None):
+    try:
+        # Log raw query parameters for debugging
+        logger.info(f"Raw query params: {request.query_params}")
+        logger.info(f"Parsed client_id: {client_id}, campaign_id: {campaign_id}")
+        
+        # Validate client_id
+        if not client_id or client_id.lower() == "none":
+            logger.error("Client ID is missing or invalid")
+            raise HTTPException(status_code=400, detail="Client ID is required")
+        
+        # Validate campaign_id
+        if not campaign_id or campaign_id.lower() == "none":
+            logger.error("Campaign ID is missing or invalid")
+            raise HTTPException(status_code=400, detail="Campaign ID is required")
+        
+        result = await campaign_tracker.get_all_campaigns(client_id, campaign_id)
+        logger.info(f"Retrieved {len(result)} jobs for client_id: {client_id}, campaign_id: {campaign_id}")
+        return JSONResponse([campaign.dict() for campaign in result])
+    except HTTPException as e:
+        logger.error(f"Get all campaigns error: {e.detail}")
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error in get_all_campaigns: {str(e)}")
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+@app.get("/api/campaign/{campaign_id}", response_model=CampaignResponse)
+async def get_campaign(campaign_id: str):
+    try:
+        logger.info(f"Fetching job with campaign_id: {campaign_id}")
+        result = await campaign_tracker.get_campaign(campaign_id)  # Changed to campaign_tracker
+        return JSONResponse(result.dict())
+    except HTTPException as e:
+        logger.error(f"Get campaign error: {e.detail}")
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error in get_campaign: {str(e)}")
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+
+@app.post("/api/create-campaign", response_model=ManagerCampaignResponse)
+async def create_manager_campaign(campaign: ManagerCampaignCreate):
+    try:
+        result = await campaign_manager.create_manager_campaign(campaign)
         return JSONResponse(result.dict())
     except HTTPException as e:
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
-@app.get("/api/all-campaigns", response_model=List[CampaignResponse])
-async def get_all_campaigns(client_id: Optional[str] = None):
+@app.get("/api/get-campaigns", response_model=List[ManagerCampaignResponse])
+async def get_all_manager_campaigns(client_id: Optional[str] = None):
     try:
-        result = await campaign_tracker.get_all_campaigns(client_id)
+        result = await campaign_manager.get_all_manager_campaigns(client_id)
         return JSONResponse([campaign.dict() for campaign in result])
     except HTTPException as e:
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 
-@app.get("/api/campaign/{campaign_id}", response_model=CampaignResponse)
-async def get_campaign(campaign_id: str):
+@app.get("/api/each-campaign/{campaign_id}", response_model=ManagerCampaignResponse)
+async def get_manager_campaign(campaign_id: str):
     try:
-        result = await campaign_tracker.get_campaign(campaign_id)
+        logger.info(f"Fetching manager campaign with ID: {campaign_id}")
+        result = await campaign_manager.get_manager_campaign(campaign_id)
+        if not result:
+            logger.error(f"Campaign not found for ID: {campaign_id}")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        logger.info(f"Successfully fetched campaign: {result.dict()}")
         return JSONResponse(result.dict())
     except HTTPException as e:
+        logger.error(f"Get manager campaign error: {e.detail}")
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
+        logger.error(f"Server error in get_manager_campaign: {str(e)}")
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 # Pydantic models for validation
 
@@ -521,6 +590,8 @@ class InterviewRoundData(BaseModel):
     selectedTimeSlot: Optional[TimeSlot] = None
     schedulingOption: Optional[str] = None
     candidateId: str
+    campaignId: str
+    clientId: str
     sessionId: Optional[str] = None
     createdAt: datetime = datetime.utcnow()
 
@@ -530,6 +601,8 @@ def save_interview_round(round: InterviewRoundData):
     try:
         round_dict = round.dict()
         print("Backend: Storing candidateId as string:", round_dict["candidateId"])
+        print("Backend: Storing campaignId as string:", round_dict["campaignId"])
+        print("Backend: Storing clientId as string:", round_dict["clientId"])
         print("Backend: Storing sessionId as string:", round_dict["sessionId"])
         
         print("Backend: Inserting round into MongoDB:", round_dict)
@@ -540,15 +613,17 @@ def save_interview_round(round: InterviewRoundData):
         print("Backend: Unexpected error saving interview round:", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to save interview round: {str(e)}")
 
-@app.get("/interview-rounds/{candidate_id}")
-def get_interview_rounds(candidate_id: str):
-    print("Backend: Fetching interview rounds for candidate_id:", candidate_id)
+@app.get("/interview-rounds/{candidate_id}/{campaign_id}/{client_id}")
+def get_interview_rounds(candidate_id: str, campaign_id: str, client_id: str):
+    print("Backend: Fetching interview rounds for candidate_id:", candidate_id, "campaign_id:", campaign_id, "client_id:", client_id)
     try:
-        rounds = list(rounds_collection.find({"candidateId": candidate_id}))  # Query by string
+        rounds = list(rounds_collection.find({"candidateId": candidate_id, "campaignId": campaign_id, "clientId": client_id}))
         print("Backend: Found rounds:", rounds)
         for round in rounds:
             round["_id"] = str(round["_id"])
             round["candidateId"] = str(round["candidateId"])
+            round["campaignId"] = str(round["campaignId"])
+            round["clientId"] = str(round["clientId"])
             if round.get("sessionId"):
                 round["sessionId"] = str(round["sessionId"])
         return rounds

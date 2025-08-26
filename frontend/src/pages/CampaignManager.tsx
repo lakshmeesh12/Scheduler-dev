@@ -1,24 +1,17 @@
-//src/pages/CampaignManager.tsx
-
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  Search, Plus, Filter, SortDesc, Calendar, UserCheck, MapPin, Target, Briefcase, ArrowLeft, X, User, Building
-} from "lucide-react";
+import { Search, Plus, Filter, SortDesc, Calendar, UserCheck, MapPin, Target, Briefcase, ArrowLeft, X, User, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
-} from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { fetchAllClients, createCampaign, fetchAllCampaigns, Client, HiringCampaign, CampaignCreate } from "@/api";
+import { fetchAllClients, createCampaign, fetchAllCampaigns, Client, HiringCampaign, CampaignCreate, fetchManagerCampaignById, ManagerCampaign } from "@/api";
+import QChat from "@/components/QChat"; // Added import
 
 interface TalentAcquisitionTeamMember {
   id: string;
@@ -29,11 +22,12 @@ interface TalentAcquisitionTeamMember {
 }
 
 const CampaignManager = () => {
-  const { clientId } = useParams<{ clientId: string }>();
+  const { clientId, campaignId } = useParams<{ clientId: string; campaignId: string }>();
   const navigate = useNavigate();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedCampaign, setSelectedCampaign] = useState<ManagerCampaign | null>(null);
   const [campaigns, setCampaigns] = useState<HiringCampaign[]>([]);
-  const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
+  const [isCreateJobModalOpen, setIsCreateJobModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -43,6 +37,7 @@ const CampaignManager = () => {
   const [error, setError] = useState<string | null>(null);
   const [newCampaign, setNewCampaign] = useState<CampaignCreate>({
     client_id: clientId || "",
+    campaign_id: campaignId || "",
     jobTitle: "",
     description: "",
     experienceLevel: "Junior",
@@ -52,96 +47,115 @@ const CampaignManager = () => {
     jobType: "Full-time",
     startDate: new Date().toISOString().split("T")[0],
     created_by: "",
-    talentAcquisitionTeam: []
+    talentAcquisitionTeam: [],
   });
   const [newTeamMember, setNewTeamMember] = useState<TalentAcquisitionTeamMember>({
     id: "",
     name: "",
     email: "",
     role: "Recruiter",
-    isHiringManager: false
+    isHiringManager: false,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    if (clientId) {
-      loadClient();
-      loadCampaigns();
+    if (!clientId || clientId.trim() === '' || !campaignId || campaignId.trim() === '') {
+      console.error('CampaignManager: Invalid or missing clientId or campaignId', { clientId, campaignId });
+      setError('Invalid client or campaign ID');
+      setIsLoading(false);
+      return;
     }
-  }, [clientId]);
+
+    loadClient();
+    loadCampaignDetails();
+    loadCampaigns();
+  }, [clientId, campaignId]);
 
   const loadClient = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const allClients = await fetchAllClients();
-      const client = allClients.find(c => c.id === clientId);
+      const client = allClients.find((c) => c.id === clientId);
       if (client) {
         setSelectedClient(client);
       } else {
-        setError('Client not found');
+        setError("Client not found");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load client');
+      setError(err instanceof Error ? err.message : "Failed to load client");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const loadCampaigns = async () => {
-    setIsLoading(true);
-    setError(null);
-    setCampaigns([]);
-    try {
-      const data = await fetchAllCampaigns(clientId!);
-      setCampaigns(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load campaigns');
-    } finally {
-      setIsLoading(false);
+  const loadCampaignDetails = async () => {
+  setIsLoading(true);
+  setError(null);
+  try {
+    const campaign = await fetchManagerCampaignById(campaignId!);
+    setSelectedCampaign(campaign);
+  } catch (err) {
+    console.error('loadCampaignDetails: Error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign details';
+    setError(errorMessage);
+    if (errorMessage.includes('Campaign not found')) {
+      setError('The specified campaign does not exist. Please check the campaign ID or contact support.');
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const loadCampaigns = async () => {
+  setIsLoading(true);
+  setError(null);
+  setCampaigns([]);
+  try {
+    console.log('loadCampaigns: Calling fetchAllCampaigns with', { clientId, campaignId });
+    const data = await fetchAllCampaigns(clientId!, campaignId!);
+    console.log('loadCampaigns: Campaigns loaded:', data);
+    setCampaigns(data);
+    if (data.length === 0) {
+      setError('No jobs found for this campaign. Create a new job to get started.');
+    }
+  } catch (err) {
+    console.error('loadCampaigns: Error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Failed to load jobs';
+    setError(errorMessage);
+    if (errorMessage.includes('Campaign not found')) {
+      setError('The specified campaign does not exist. Please check the campaign ID or contact support.');
+    }
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   useEffect(() => {
-    console.log('newCampaign state updated:', newCampaign);
+    console.log("newCampaign state updated:", newCampaign);
   }, [newCampaign]);
 
   const handleAddTeamMember = () => {
-    console.log('Adding team member:', newTeamMember);
+    console.log("Adding team member:", newTeamMember);
     if (!newTeamMember.name.trim() || !newTeamMember.email.trim()) {
       setError("Name and email are required for team members");
-      console.error('Validation failed: Name or email is empty');
+      console.error("Validation failed: Name or email is empty");
       return;
     }
     if (!newTeamMember.email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)) {
       setError("Invalid email format for team member");
-      console.error('Validation failed: Invalid email format', newTeamMember.email);
+      console.error("Validation failed: Invalid email format", newTeamMember.email);
       return;
     }
-
-    const memberWithId = {
-      ...newTeamMember,
-      id: Date.now().toString()
-    };
-
-    console.log('New team member with ID:', memberWithId);
+    const memberWithId = { ...newTeamMember, id: Date.now().toString() };
+    console.log("New team member with ID:", memberWithId);
     const updatedTeam = [...(newCampaign.talentAcquisitionTeam || []), memberWithId];
-    setNewCampaign({
-      ...newCampaign,
-      talentAcquisitionTeam: updatedTeam
-    });
-    console.log('Updated newCampaign.talentAcquisitionTeam:', updatedTeam);
-
-    setNewTeamMember({
-      id: "",
-      name: "",
-      email: "",
-      role: "Recruiter",
-      isHiringManager: false
-    });
+    setNewCampaign({ ...newCampaign, talentAcquisitionTeam: updatedTeam });
+    console.log("Updated newCampaign.talentAcquisitionTeam:", updatedTeam);
+    setNewTeamMember({ id: "", name: "", email: "", role: "Recruiter", isHiringManager: false });
   };
 
-  const handleCreateCampaign = async () => {
+  const handleCreateJob = async () => {
     const errors: { [key: string]: string } = {};
     if (!newCampaign.jobTitle.trim()) errors.jobTitle = "Job Title is required";
     if (!newCampaign.description.trim()) errors.description = "Description is required";
@@ -152,24 +166,24 @@ const CampaignManager = () => {
         errors[`teamMemberEmail${index}`] = `Invalid email for team member: ${member.name}`;
       }
     });
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      console.error('Form validation errors:', errors);
+      console.error("Form validation errors:", errors);
       return;
     }
+
     setIsLoading(true);
     try {
-      console.log('Creating campaign with payload:', newCampaign);
-      const campaignData = {
-        ...newCampaign,
-        client_id: clientId!
-      };
-      console.log('Sending campaign data to API:', campaignData);
+      console.log("Creating job with payload:", newCampaign);
+      const campaignData = { ...newCampaign, client_id: clientId!, campaign_id: campaignId! };
+      console.log("Sending job data to API:", campaignData);
       const createdCampaign = await createCampaign(campaignData);
-      console.log('Campaign created successfully:', createdCampaign);
+      console.log("Job created successfully:", createdCampaign);
       setCampaigns([...campaigns, createdCampaign]);
       setNewCampaign({
-        client_id: "",
+        client_id: clientId || "",
+        campaign_id: campaignId || "",
         jobTitle: "",
         description: "",
         experienceLevel: "Junior",
@@ -179,20 +193,14 @@ const CampaignManager = () => {
         jobType: "Full-time",
         startDate: new Date().toISOString().split("T")[0],
         created_by: "",
-        talentAcquisitionTeam: []
+        talentAcquisitionTeam: [],
       });
-      setNewTeamMember({
-        id: "",
-        name: "",
-        email: "",
-        role: "Recruiter",
-        isHiringManager: false
-      });
+      setNewTeamMember({ id: "", name: "", email: "", role: "Recruiter", isHiringManager: false });
       setFormErrors({});
-      setIsCreateCampaignModalOpen(false);
+      setIsCreateJobModalOpen(false);
     } catch (err) {
-      console.error('Error creating campaign:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create campaign');
+      console.error("Error creating job:", err);
+      setError(err instanceof Error ? err.message : "Failed to create job");
     } finally {
       setIsLoading(false);
     }
@@ -201,27 +209,33 @@ const CampaignManager = () => {
   const handleRemoveTeamMember = (memberId: string) => {
     setNewCampaign({
       ...newCampaign,
-      talentAcquisitionTeam: newCampaign.talentAcquisitionTeam?.filter(m => m.id !== memberId) || []
+      talentAcquisitionTeam: newCampaign.talentAcquisitionTeam?.filter((m) => m.id !== memberId) || [],
     });
   };
 
   const getStatusColor = (status: HiringCampaign["status"]) => {
     switch (status) {
-      case "Active": return "bg-green-100 text-green-800";
-      case "Completed": return "bg-blue-100 text-blue-800";
-      case "On Hold": return "bg-yellow-100 text-yellow-800";
-      default: return "bg-gray-100 text-gray-800";
+      case "Active":
+        return "bg-green-100 text-green-800";
+      case "Completed":
+        return "bg-blue-100 text-blue-800";
+      case "On Hold":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
   const filteredAndSortedCampaigns = useMemo(() => {
-    let result = campaigns.filter(campaign => {
-      const matchesSearch = campaign.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           campaign.department.toLowerCase().includes(searchQuery.toLowerCase());
+    let result = campaigns.filter((campaign) => {
+      const matchesSearch =
+        campaign.jobTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        campaign.department.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "all" || campaign.status === statusFilter;
       const matchesDepartment = departmentFilter === "all" || campaign.department === departmentFilter;
       return matchesSearch && matchesStatus && matchesDepartment;
     });
+
     result.sort((a, b) => {
       let valueA: any, valueB: any;
       if (sortBy === "jobTitle") {
@@ -239,10 +253,11 @@ const CampaignManager = () => {
       }
       return sortDirection === "asc" ? valueA - valueB : valueB - valueA;
     });
+
     return result;
   }, [campaigns, searchQuery, statusFilter, departmentFilter, sortBy, sortDirection]);
 
-  const departments = [...new Set(campaigns.map(c => c.department))];
+  const departments = [...new Set(campaigns.map((c) => c.department))];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
@@ -256,7 +271,7 @@ const CampaignManager = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold gradient-text">
-                  {selectedClient ? `${selectedClient.companyName} Campaigns` : "Campaign Manager"}
+                  {selectedClient && selectedCampaign ? `${selectedClient.companyName} - ${selectedCampaign.title} Jobs` : "Jobs Dashboard"}
                 </h1>
                 <p className="text-sm text-gray-600">Enterprise Hiring Management</p>
               </div>
@@ -264,19 +279,19 @@ const CampaignManager = () => {
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
-                onClick={() => navigate("/client-dashboard")}
+                onClick={() => navigate(`/campaign-dashboard/${clientId}`)}
                 disabled={isLoading}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Clients
+                Back to Campaigns
               </Button>
               <Button
-                onClick={() => setIsCreateCampaignModalOpen(true)}
+                onClick={() => setIsCreateJobModalOpen(true)}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 disabled={isLoading}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                New Campaign
+                New Job
               </Button>
             </div>
           </div>
@@ -291,7 +306,7 @@ const CampaignManager = () => {
               <CardContent className="p-6">
                 <div className="flex items-center space-x-4">
                   <img
-                    src={selectedClient.logoPath}
+                    src={selectedClient.logoPath || "/default-logo.png"}
                     alt={`${selectedClient.companyName} logo`}
                     className="w-16 h-16 object-contain rounded-lg"
                   />
@@ -311,7 +326,7 @@ const CampaignManager = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-blue-600">{campaigns.length}</p>
-                    <p className="text-sm text-gray-500">Total Campaigns</p>
+                    <p className="text-sm text-gray-500">Total Jobs</p>
                   </div>
                 </div>
               </CardContent>
@@ -322,9 +337,11 @@ const CampaignManager = () => {
               <div className="flex flex-col lg:flex-row gap-4">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
+                    />
                     <Input
-                      placeholder="Search campaigns by job title or department..."
+                      placeholder="Search jobs by title or department..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
@@ -349,8 +366,10 @@ const CampaignManager = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -377,91 +396,84 @@ const CampaignManager = () => {
           </Card>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredAndSortedCampaigns.map((campaign) => (
-                <Card
+              <Card
                 key={campaign.id}
                 className="glass hover:shadow-lg transition-all duration-300 cursor-pointer hover:scale-105 relative"
                 onClick={() => navigate(`/candidate-search/${campaign.id}`)}
-                >
+              >
                 <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
-                        <CardTitle className="text-lg pr-2">{campaign.jobTitle}</CardTitle>
-                        <div className="flex items-center space-x-2 mt-1">
+                      <CardTitle className="text-lg pr-2">{campaign.jobTitle}</CardTitle>
+                      <div className="flex items-center space-x-2 mt-1">
                         <Building className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-600">{campaign.department}</span>
-                        </div>
+                      </div>
                     </div>
-                    <Badge className={getStatusColor(campaign.status)}>
-                        {campaign.status}
-                    </Badge>
-                    </div>
+                    <Badge className={getStatusColor(campaign.status)}>{campaign.status}</Badge>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-1">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-600">{campaign.location}</span>
+                      <MapPin className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-600">{campaign.location}</span>
                     </div>
                     <div className="flex items-center space-x-1">
-                        <Target className="w-4 h-4 text-gray-500" />
-                        <span className="text-gray-600">{campaign.positions} positions</span>
+                      <Target className="w-4 h-4 text-gray-500" />
+                      <span className="text-gray-600">{campaign.positions} positions</span>
                     </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p className="text-gray-500">Experience Level</p>
-                        <p className="font-semibold text-gray-600">{campaign.experienceLevel}</p>
-                    </div>
-                    <div>
-                        <p className="text-gray-500">Job Type</p>
-                        <p className="font-semibold text-gray-600">{campaign.jobType}</p>
-                    </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p className="text-gray-500">Applied</p>
-                        <p className="font-semibold text-blue-600">{campaign.candidatesApplied}</p>
+                      <p className="text-gray-500">Experience Level</p>
+                      <p className="font-semibold text-gray-600">{campaign.experienceLevel}</p>
                     </div>
                     <div>
-                        <p className="text-gray-500">Hired</p>
-                        <p className="font-semibold text-green-600">{campaign.candidatesHired}</p>
+                      <p className="text-gray-500">Job Type</p>
+                      <p className="font-semibold text-gray-600">{campaign.jobType}</p>
                     </div>
-                    </div>
-                    
-                    {/* Updated section with Team Members and Hiring Manager side by side */}
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                        <p className="text-gray-500">Team Members</p>
-                        <p className="font-medium">{campaign.talentAcquisitionTeam?.length || 0} members</p>
+                      <p className="text-gray-500">Applied</p>
+                      <p className="font-semibold text-blue-600">{campaign.candidatesApplied}</p>
                     </div>
                     <div>
-                        <p className="text-gray-500">Hiring Manager</p>
-                        <div className="flex items-center bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-full px-2 py-1 shadow-sm mt-1">
+                      <p className="text-gray-500">Hired</p>
+                      <p className="font-semibold text-green-600">{campaign.candidatesHired}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Team Members</p>
+                      <p className="font-medium">{campaign.talentAcquisitionTeam?.length || 0} members</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Hiring Manager</p>
+                      <div className="flex items-center bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-full px-2 py-1 shadow-sm mt-1">
                         <User className="w-3 h-3 text-indigo-600 mr-1" />
                         <span className="text-xs font-medium text-indigo-700 truncate max-w-[100px]">
-                            {campaign.created_by_name}
+                          {campaign.created_by_name}
                         </span>
-                        </div>
+                      </div>
                     </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between pt-2 border-t">
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
                     <span className="text-xs text-gray-500">
-                        Started {new Date(campaign.startDate).toLocaleDateString()}
+                      Started {new Date(campaign.startDate).toLocaleDateString()}
                     </span>
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    </div>
+                  </div>
                 </CardContent>
-                </Card>
+              </Card>
             ))}
-            </div>
-          <Dialog open={isCreateCampaignModalOpen} onOpenChange={setIsCreateCampaignModalOpen}>
+          </div>
+          <Dialog open={isCreateJobModalOpen} onOpenChange={setIsCreateJobModalOpen}>
             <DialogContent className="sm:max-w-[900px] max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New Campaign</DialogTitle>
-                <DialogDescription>
-                  Create a new hiring campaign for {selectedClient?.companyName}
-                </DialogDescription>
+                <DialogTitle>Create New Job</DialogTitle>
+                <DialogDescription>Create a new job for {selectedClient?.companyName} - {selectedCampaign?.title}</DialogDescription>
               </DialogHeader>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
@@ -513,7 +525,9 @@ const CampaignManager = () => {
                     <Label htmlFor="jobType">Job Type</Label>
                     <Select
                       value={newCampaign.jobType}
-                      onValueChange={(value: "Full-time" | "Part-time" | "Contract") => setNewCampaign({ ...newCampaign, jobType: value })}
+                      onValueChange={(value: "Full-time" | "Part-time" | "Contract") =>
+                        setNewCampaign({ ...newCampaign, jobType: value })
+                      }
                       disabled={isLoading}
                     >
                       <SelectTrigger>
@@ -530,7 +544,9 @@ const CampaignManager = () => {
                     <Label htmlFor="experienceLevel">Experience Level</Label>
                     <Select
                       value={newCampaign.experienceLevel}
-                      onValueChange={(value: "Junior" | "Mid-level" | "Senior") => setNewCampaign({ ...newCampaign, experienceLevel: value })}
+                      onValueChange={(value: "Junior" | "Mid-level" | "Senior") =>
+                        setNewCampaign({ ...newCampaign, experienceLevel: value })
+                      }
                       disabled={isLoading}
                     >
                       <SelectTrigger>
@@ -596,11 +612,11 @@ const CampaignManager = () => {
                     />
                     <Select
                       value={newTeamMember.role}
-                      onValueChange={(value: "Recruiter" | "Hiring Manager" | "Coordinator") => 
-                        setNewTeamMember({ 
-                          ...newTeamMember, 
+                      onValueChange={(value: "Recruiter" | "Hiring Manager" | "Coordinator") =>
+                        setNewTeamMember({
+                          ...newTeamMember,
                           role: value,
-                          isHiringManager: value === "Hiring Manager"
+                          isHiringManager: value === "Hiring Manager",
                         })
                       }
                       disabled={isLoading}
@@ -649,11 +665,15 @@ const CampaignManager = () => {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateCampaignModalOpen(false)} disabled={isLoading}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreateJobModalOpen(false)}
+                  disabled={isLoading}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handleCreateCampaign} disabled={isLoading}>
-                  {isLoading ? "Creating..." : "Create Campaign"}
+                <Button onClick={handleCreateJob} disabled={isLoading}>
+                  {isLoading ? "Creating..." : "Create Job"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -661,12 +681,13 @@ const CampaignManager = () => {
           {filteredAndSortedCampaigns.length === 0 && !isLoading && !error && (
             <div className="text-center py-12">
               <Briefcase className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-              <p className="text-xl font-medium text-gray-600 mb-2">No Campaigns Found</p>
-              <p className="text-gray-500">Create your first campaign to get started.</p>
+              <p className="text-xl font-medium text-gray-600 mb-2">No Jobs Found</p>
+              <p className="text-gray-500">Create your first job to get started.</p>
             </div>
           )}
         </div>
       </main>
+      <QChat /> {/* Added QChat component */}
     </div>
   );
 };

@@ -1,8 +1,6 @@
-//App.tsx
-
 import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster as Sonner } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -23,8 +21,10 @@ import Scheduler from "./pages/Scheduler";
 import NotFound from "./pages/NotFound";
 import { Button } from "@/components/ui/button";
 import ClientDashboard from "./pages/ClientDashboard";
+import CampaignDashboard from "./pages/CampaignDashboard";
 import CampaignManager from "./pages/CampaignManager";
 import CandidateSearch from "./pages/CandidateSearch";
+import QChatPage from "./pages/QChatPage"; // Added import
 
 const queryClient = new QueryClient();
 
@@ -128,7 +128,15 @@ const App = () => {
                 }
               />
               <Route
-                path="/campaign-manager/:clientId"
+                path="/campaign-dashboard/:clientId"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><CampaignDashboard /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campaign-manager/:clientId/:campaignId"
                 element={
                   <ProtectedRoute>
                     <AppLayout><CampaignManager /></AppLayout>
@@ -235,6 +243,14 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="/qchat"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><QChatPage /></AppLayout>
+                  </ProtectedRoute>
+                }
+              /> {/* Added QChat route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthHandler>

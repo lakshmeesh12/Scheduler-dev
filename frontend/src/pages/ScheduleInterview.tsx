@@ -2,10 +2,46 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Calendar, Plus, Bell, BarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { InterviewRound, InterviewRoundData } from "@/components/interview/InterviewRound";
+import { InterviewRound } from "@/components/interview/InterviewRound";
 import { ReminderSettings, ReminderConfig } from "@/components/interview/ReminderSettings";
 import { InterviewStatusProgress, InterviewStatus } from "@/components/interview/InterviewStatusProgress";
-import { fetchProfileById, ApiCandidate } from "@/api";
+import { fetchProfileById, fetchInterviewRounds, ApiCandidate, InterviewRoundData } from "@/api";
+
+export interface InterviewRoundData {
+  id: string;
+  roundNumber: number;
+  status: 'draft' | 'scheduled' | 'completed';
+  panel: {
+    user_id: string;
+    display_name: string;
+    email: string;
+    role?: string;
+    avatar?: string;
+  }[];
+  details: {
+    title: string;
+    description: string;
+    duration: number;
+    date: string | null;
+    location: string;
+    meetingType: 'in-person' | 'virtual';
+    preferred_timezone: string;
+  } | null;
+  selectedTimeSlot: {
+    id: string;
+    start: string;
+    end: string;
+    date: string;
+    available: boolean;
+    availableMembers: string[];
+  } | null;
+  schedulingOption: 'direct' | 'candidate_choice' | null;
+  candidateId: string;
+  campaignId: string;
+  clientId: string;
+  sessionId: string | null;
+  createdAt?: string;
+}
 
 const ScheduleInterview = () => {
   const { id } = useParams<{ id: string }>();
@@ -29,13 +65,15 @@ const ScheduleInterview = () => {
     const storedSessionId = localStorage.getItem("session_id");
     setSessionId(storedSessionId);
     console.log("ScheduleInterview - session_id from localStorage:", storedSessionId);
+    const storedCampaignId = sessionStorage.getItem("campaignId");
+    const storedClientId = sessionStorage.getItem("clientId");
 
-    // Load persisted data from localStorage
-    const savedRounds = localStorage.getItem(`interview_rounds_${id}`);
-    const savedActiveRoundId = localStorage.getItem(`active_round_id_${id}`);
-    const savedCandidateStatus = localStorage.getItem(`candidate_status_${id}`);
-    const savedReminderConfig = localStorage.getItem(`reminder_config_${id}`);
-    const savedResponseStatus = localStorage.getItem(`response_status_${id}`);
+    // Load persisted data from localStorage as fallback
+    const savedRounds = localStorage.getItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedActiveRoundId = localStorage.getItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedCandidateStatus = localStorage.getItem(`candidate_status_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedReminderConfig = localStorage.getItem(`reminder_config_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedResponseStatus = localStorage.getItem(`response_status_${id}_${storedCampaignId}_${storedClientId}`);
 
     if (savedRounds) {
       setRounds(JSON.parse(savedRounds));
@@ -55,84 +93,81 @@ const ScheduleInterview = () => {
 
     // Load rounds from backend
     const loadRounds = async () => {
+      if (!id || !storedCampaignId || !storedClientId) {
+        setError("Missing candidateId, campaignId, or clientId");
+        return;
+      }
       try {
-        const response = await fetch(`/api/interview-rounds/${id}`);
-        if (response.ok) {
-          const backendRounds = await response.json();
-          if (backendRounds.length > 0) {
-            setRounds(backendRounds);
-            setActiveRoundId(backendRounds[0].id);
-            localStorage.setItem(`interview_rounds_${id}`, JSON.stringify(backendRounds));
-            localStorage.setItem(`active_round_id_${id}`, backendRounds[0].id);
-          }
+        const backendRounds = await fetchInterviewRounds(id, storedCampaignId, storedClientId);
+        console.log("ScheduleInterview: Loaded rounds from backend:", backendRounds);
+        if (backendRounds.length > 0) {
+          setRounds(backendRounds);
+          setActiveRoundId(backendRounds[0].id);
+          localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(backendRounds));
+          localStorage.setItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`, backendRounds[0].id);
+        } else {
+          // Initialize first round if no backend data
+          const firstRound: InterviewRoundData = {
+            id: 'round-1',
+            roundNumber: 1,
+            status: 'draft',
+            panel: [],
+            details: null,
+            selectedTimeSlot: null,
+            schedulingOption: null,
+            candidateId: id,
+            campaignId: storedCampaignId,
+            clientId: storedClientId,
+            sessionId: storedSessionId,
+            createdAt: new Date().toISOString(),
+          };
+          setRounds([firstRound]);
+          setActiveRoundId(firstRound.id);
+          localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify([firstRound]));
+          localStorage.setItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`, firstRound.id);
         }
       } catch (error) {
         console.error("ScheduleInterview: Error loading rounds from backend:", error);
+        setError(error instanceof Error ? error.message : 'Failed to fetch interview rounds');
       }
     };
 
-    if (id) {
+    if (id && storedCampaignId && storedClientId) {
       const loadProfile = async () => {
         setLoading(true);
         try {
           const profile = await fetchProfileById(id);
           setCandidate(profile);
-          setLoading(false);
           await loadRounds();
         } catch (error) {
           setError(error instanceof Error ? error.message : 'Failed to fetch candidate profile');
+        } finally {
           setLoading(false);
         }
       };
       loadProfile();
+    } else {
+      setError("Missing candidateId, campaignId, or clientId");
+      setLoading(false);
     }
   }, [id]);
 
-  // Save rounds to localStorage whenever they change
-  useEffect(() => {
-    if (rounds.length > 0) {
-      localStorage.setItem(`interview_rounds_${id}`, JSON.stringify(rounds));
-    }
-  }, [rounds, id]);
-
-  // Save activeRoundId to localStorage whenever it changes
-  useEffect(() => {
-    if (activeRoundId) {
-      localStorage.setItem(`active_round_id_${id}`, activeRoundId);
-    }
-  }, [activeRoundId, id]);
-
-  // Save candidateStatus to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(`candidate_status_${id}`, candidateStatus);
-  }, [candidateStatus, id]);
-
-  // Save reminderConfig to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(`reminder_config_${id}`, JSON.stringify(reminderConfig));
-  }, [reminderConfig, id]);
-
-  // Save responseStatus to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(`response_status_${id}`, responseStatus);
-  }, [responseStatus, id]);
-
-  // Initialize first round if no rounds exist
-  useEffect(() => {
-    if (rounds.length === 0) {
-      const firstRound: InterviewRoundData = {
-        id: 'round-1', roundNumber: 1, status: 'draft', panel: [], details: null,
-        selectedTimeSlot: null, schedulingOption: null
-      };
-      setRounds([firstRound]);
-      setActiveRoundId(firstRound.id);
-    }
-  }, [rounds.length]);
-
   const addNewRound = () => {
+    const storedCampaignId = sessionStorage.getItem("campaignId");
+    const storedClientId = sessionStorage.getItem("clientId");
     const newRound: InterviewRoundData = {
-      id: `round-${rounds.length + 1}`, roundNumber: rounds.length + 1, status: 'draft',
-      panel: [], details: null, selectedTimeSlot: null, schedulingOption: null
+      id: `round-${rounds.length + 1}`,
+      roundNumber: rounds.length + 1,
+      status: 'draft',
+      panel: [],
+      details: null,
+      selectedTimeSlot: null,
+      schedulingOption: null,
+      candidateId: id!,
+      campaignId: storedCampaignId!,
+      clientId: storedClientId!,
+      sessionId,
+      createdAt: new Date().toISOString(),
     };
     setRounds([...rounds, newRound]);
     setActiveRoundId(newRound.id);
@@ -146,7 +181,9 @@ const ScheduleInterview = () => {
     if (rounds.length > 1) {
       const filteredRounds = rounds.filter(round => round.id !== roundId);
       const renumberedRounds = filteredRounds.map((round, index) => ({
-        ...round, roundNumber: index + 1, id: `round-${index + 1}`
+        ...round,
+        roundNumber: index + 1,
+        id: `round-${index + 1}`,
       }));
       setRounds(renumberedRounds);
       if (activeRoundId === roundId) setActiveRoundId(renumberedRounds[0]?.id || null);
@@ -167,7 +204,7 @@ const ScheduleInterview = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-500 text-lg">{error || "Candidate not found."}</p>
+          <p className="text-red-600 text-lg">{error || "Candidate not found."}</p>
           <Link to="/dashboard">
             <Button className="mt-4 bg-primary hover:bg-primary/90">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -210,7 +247,7 @@ const ScheduleInterview = () => {
               <div>
                 <h1 className="text-2xl font-bold gradient-text">Schedule Interview</h1>
                 <p className="text-sm text-muted-foreground">
-                  {candidate.name || "Unknown"} - {candidate.work_history[0]?.designation || "N/A"}
+                  {candidate.name || "Unknown"} - {candidate.recent_designation || "N/A"}
                 </p>
               </div>
             </div>

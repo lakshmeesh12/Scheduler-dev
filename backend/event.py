@@ -333,21 +333,25 @@ class EventScheduler:
                 raise
 
             # Store event details in the session with campaign_id
-            if candidate_email and not (candidate_name and recent_designation):
+            if candidate_email:
                 rms_db = MongoClient("mongodb://localhost:27017")["rms"]
                 candidate_profile = rms_db.profiles.find_one(
                     {"email": candidate_email},
-                    {"name": 1, "work_history": 1}
+                    {"name": 1, "work_history": 1, "profile_id": 1}
                 )
                 if candidate_profile:
                     candidate_name = candidate_profile.get("name", candidate_email)
+                    candidate_id = candidate_profile.get("profile_id", None)
                     work_history = candidate_profile.get("work_history", [])
                     recent_designation = work_history[0].get("designation", "Unknown") if work_history else "Unknown"
-                    logger.info(f"Fetched candidate: {candidate_name}, designation: {recent_designation} for email: {candidate_email}")
+                    logger.info(f"Fetched candidate: {candidate_name}, candidate_id: {candidate_id}, designation: {recent_designation} for email: {candidate_email}")
                 else:
                     logger.warning(f"No profile found for candidate email: {candidate_email}")
                     candidate_name = candidate_email
+                    candidate_id = None
                     recent_designation = "Unknown"
+            else:
+                candidate_id = None
 
             # Store event details in the session with campaign_id
             panel_emails = [attendee["email"] for attendee in attendees]
@@ -359,6 +363,7 @@ class EventScheduler:
                     "candidate": {
                         "email": candidate_email,
                         "name": candidate_name,
+                        "candidate_id": candidate_id,
                         "recent_designation": recent_designation
                     },
                     "panel_emails": panel_emails,
@@ -417,7 +422,6 @@ class EventScheduler:
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
-
     async def track_event(self, session_id: str) -> Dict[str, Any]:
         """
         Track a scheduled event for a given session, including attendee responses and event details.

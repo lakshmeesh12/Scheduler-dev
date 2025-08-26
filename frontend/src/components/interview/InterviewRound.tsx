@@ -17,7 +17,7 @@ export interface PanelMember {
   user_id: string;
   display_name: string;
   email: string;
-  role?: string; // Made role optional
+  role?: string;
   avatar?: string;
 }
 
@@ -48,6 +48,9 @@ export interface InterviewRoundData {
   details: InterviewDetails | null;
   selectedTimeSlot: TimeSlot | null;
   schedulingOption: 'direct' | 'candidate_choice' | null;
+  candidateId: string;
+  sessionId: string | null;
+  createdAt?: string;
 }
 
 interface InterviewRoundProps {
@@ -102,6 +105,7 @@ export const InterviewRound = ({
         ...roundData,
         candidateId: candidateInfo.profile_id,
         sessionId: localStorage.getItem("session_id"),
+        createdAt: roundData.createdAt || new Date().toISOString(),
       };
       console.log("InterviewRound: Sending request to URL: /api/interview-rounds/", roundPayload);
       const result = await saveInterviewRound(roundPayload);
@@ -116,10 +120,9 @@ export const InterviewRound = ({
 
   const handlePanelSave = (panel: PanelMember[]) => {
     console.log("InterviewRound: Saving panel:", panel);
-    // Ensure each panel member has a role
     const updatedPanel = panel.map(member => ({
       ...member,
-      role: member.role || "Interviewer", // Default role
+      role: member.role || "Interviewer",
     }));
     onUpdateRound(round.id, { panel: updatedPanel, status: 'draft' });
     setPanelCollapsed(true);

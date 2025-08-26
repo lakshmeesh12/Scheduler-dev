@@ -1,5 +1,3 @@
-# campaign_tracker.py
-
 from pymongo import MongoClient
 from uuid import uuid4
 from datetime import datetime
@@ -30,8 +28,9 @@ class CampaignCreate(BaseModel):
     jobType: Literal["Full-time", "Part-time", "Contract"]
     startDate: str
     client_id: str
+    campaign_id: str  # Add campaign_id
     created_by: str
-    talentAcquisitionTeam: List[TalentAcquisitionTeamMember]  # Add talentAcquisitionTeam
+    talentAcquisitionTeam: List[TalentAcquisitionTeamMember]
 
 class CampaignResponse(BaseModel):
     id: str
@@ -48,9 +47,10 @@ class CampaignResponse(BaseModel):
     experienceLevel: Literal["Junior", "Mid-level", "Senior"]
     jobType: Literal["Full-time", "Part-time", "Contract"]
     client_id: str
+    campaign_id: str  # Add campaign_id
     created_by: str
     created_by_name: str
-    talentAcquisitionTeam: List[TalentAcquisitionTeamMember]  # Add talentAcquisitionTeam
+    talentAcquisitionTeam: List[TalentAcquisitionTeamMember]
     endDate: Optional[str] = None
     Interview: Optional[List[Dict[str, Any]]] = None
 
@@ -68,6 +68,25 @@ class ClientResponse(BaseModel):
     description: str
     logoPath: Optional[str] = None
 
+class ManagerCampaignCreate(BaseModel):
+    title: str
+    description: str
+    contactPerson: str
+    contactNumber: str
+    location: str
+    startDate: str
+    client_id: str
+
+class ManagerCampaignResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    contactPerson: str
+    contactNumber: str
+    location: str
+    startDate: str
+    client_id: str
+
 class CampaignTracker:
     def __init__(self):
         self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
@@ -76,6 +95,7 @@ class CampaignTracker:
         self.campaign_collection = self.db["campaign-tracker"]
         self.client_collection = self.db["clients"]
         self.users_collection = self.db["users"]
+        self.campaign_manager_collection = self.db["campaign_manager"]
 
     def _convert_objectid_to_str(self, data: Any) -> Any:
         """Recursively convert ObjectId to string in a MongoDB document."""
@@ -90,7 +110,7 @@ class CampaignTracker:
         return data
 
     async def create_campaign(self, campaign: CampaignCreate) -> CampaignResponse:
-        logger.info(f"Creating campaign with created_by: {campaign.created_by}")
+        logger.info(f"Creating job with created_by: {campaign.created_by}, campaign_id: {campaign.campaign_id}")
 
         # Validate input fields
         if not campaign.jobTitle.strip():
@@ -109,6 +129,10 @@ class CampaignTracker:
         if not self.client_collection.find_one({"_id": campaign.client_id}):
             logger.error(f"Client not found: {campaign.client_id}")
             raise HTTPException(status_code=404, detail="Client not found")
+        # Validate campaign_id exists
+        if not self.campaign_manager_collection.find_one({"_id": campaign.campaign_id}):
+            logger.error(f"Campaign not found: {campaign.campaign_id}")
+            raise HTTPException(status_code=404, detail="Campaign not found")
         # Validate talentAcquisitionTeam emails
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         for member in campaign.talentAcquisitionTeam:
@@ -131,7 +155,7 @@ class CampaignTracker:
         created_by_name = user["display_name"]
         logger.info(f"Retrieved display_name: {created_by_name} for user_id: {campaign.created_by}")
 
-        # Create campaign data
+        # Create job data
         campaign_id = str(uuid4())
         campaign_data = {
             "_id": campaign_id,
@@ -148,22 +172,23 @@ class CampaignTracker:
             "experienceLevel": campaign.experienceLevel,
             "jobType": campaign.jobType,
             "client_id": campaign.client_id,
+            "campaign_id": campaign.campaign_id,
             "created_by": campaign.created_by,
             "created_by_name": created_by_name,
             "talentAcquisitionTeam": [member.dict() for member in campaign.talentAcquisitionTeam],
             "created_at": datetime.utcnow()
         }
 
-        # Insert campaign into collection
+        # Insert job into collection
         result = self.campaign_collection.insert_one(campaign_data)
         if not result.inserted_id:
-            logger.error("Failed to create campaign")
-            raise HTTPException(status_code=500, detail="Failed to create campaign")
+            logger.error("Failed to create job")
+            raise HTTPException(status_code=500, detail="Failed to create job")
 
-        logger.info(f"Campaign created successfully with id: {campaign_id}")
+        logger.info(f"Job created successfully with id: {campaign_id}")
         return CampaignResponse(
             id=campaign_id,
-            jobTitle=campaign.jobTitle,  # Use = instead of :
+            jobTitle=campaign.jobTitle,
             department=campaign.department,
             positions=campaign.positions,
             status="Active",
@@ -176,6 +201,7 @@ class CampaignTracker:
             experienceLevel=campaign.experienceLevel,
             jobType=campaign.jobType,
             client_id=campaign.client_id,
+            campaign_id=campaign.campaign_id,
             created_by=campaign.created_by,
             created_by_name=created_by_name,
             talentAcquisitionTeam=campaign.talentAcquisitionTeam,
@@ -183,38 +209,71 @@ class CampaignTracker:
             Interview=[]
         )
 
-    async def get_all_campaigns(self, client_id: Optional[str] = None) -> List[CampaignResponse]:
-        query = {"client_id": client_id} if client_id else {}
+    async def get_all_campaigns(self, client_id: str, campaign_id: Optional[str] = None) -> List[CampaignResponse]:
+        # Validate client_id exists
+        if not self.client_collection.find_one({"_id": client_id}):
+            logger.warning(f"Client not found for client_id: {client_id}")
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        # Validate campaign_id if provided
+        if campaign_id and not self.campaign_manager_collection.find_one({"_id": campaign_id}):
+            logger.warning(f"Manager campaign not found for campaign_id: {campaign_id}")
+            return []  # Return empty list if campaign_id is invalid
+
+        # Build query to filter by client_id and optionally campaign_id
+        query = {"client_id": client_id}
+        if campaign_id:
+            query["campaign_id"] = campaign_id
+
         campaigns = list(self.campaign_collection.find(query))
-        return [
-            CampaignResponse(
-                id=str(campaign["_id"]),
-                jobTitle=campaign["jobTitle"],
-                department=campaign["department"],
-                positions=campaign["positions"],
-                status=campaign["status"],
-                startDate=campaign["startDate"],
-                location=campaign["location"],
-                candidatesApplied=campaign["candidatesApplied"],
-                candidatesHired=campaign["candidatesHired"],
-                currentRound=campaign["currentRound"],
-                description=campaign["description"],
-                experienceLevel=campaign["experienceLevel"],
-                jobType=campaign["jobType"],
-                client_id=campaign["client_id"],
-                created_by=campaign["created_by"],
-                created_by_name=campaign["created_by_name"],
-                talentAcquisitionTeam=campaign["talentAcquisitionTeam"],  # Include in response
-                endDate=campaign.get("endDate"),
-                Interview=self._convert_objectid_to_str(campaign.get("Interview", []))
-            ) for campaign in campaigns
-        ]
+        logger.info(f"Retrieved {len(campaigns)} jobs for client_id: {client_id}, campaign_id: {campaign_id}")
+
+        if not campaigns:
+            logger.info(f"No jobs found for client_id: {client_id}, campaign_id: {campaign_id}")
+            return []  # Return empty list for no jobs found
+
+        result = []
+        for campaign in campaigns:
+            try:
+                # Convert campaign_id to string to handle ObjectId or missing cases
+                campaign["campaign_id"] = self._convert_objectid_to_str(campaign.get("campaign_id", ""))
+                result.append(
+                    CampaignResponse(
+                        id=str(campaign["_id"]),
+                        jobTitle=campaign["jobTitle"],
+                        department=campaign["department"],
+                        positions=campaign["positions"],
+                        status=campaign["status"],
+                        startDate=campaign["startDate"],
+                        location=campaign["location"],
+                        candidatesApplied=campaign["candidatesApplied"],
+                        candidatesHired=campaign["candidatesHired"],
+                        currentRound=campaign["currentRound"],
+                        description=campaign["description"],
+                        experienceLevel=campaign["experienceLevel"],
+                        jobType=campaign["jobType"],
+                        client_id=campaign["client_id"],
+                        campaign_id=campaign["campaign_id"],
+                        created_by=campaign["created_by"],
+                        created_by_name=campaign["created_by_name"],
+                        talentAcquisitionTeam=campaign["talentAcquisitionTeam"],
+                        endDate=campaign.get("endDate"),
+                        Interview=self._convert_objectid_to_str(campaign.get("Interview", []))
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Error processing campaign {campaign.get('_id')}: {str(e)}")
+                continue  # Skip invalid campaigns to avoid failing the entire request
+
+        logger.info(f"Successfully processed {len(result)} campaigns for client_id: {client_id}, campaign_id: {campaign_id}")
+        return result
+
 
     async def get_campaign(self, campaign_id: str) -> CampaignResponse:
         campaign = self.campaign_collection.find_one({"_id": campaign_id})
         if not campaign:
-            logger.error(f"Campaign not found: {campaign_id}")
-            raise HTTPException(status_code=404, detail="Campaign not found")
+            logger.error(f"Job not found: {campaign_id}")
+            raise HTTPException(status_code=404, detail="Job not found")
 
         return CampaignResponse(
             id=str(campaign["_id"]),
@@ -231,24 +290,110 @@ class CampaignTracker:
             experienceLevel=campaign["experienceLevel"],
             jobType=campaign["jobType"],
             client_id=campaign["client_id"],
+            campaign_id=campaign["campaign_id"],
             created_by=campaign["created_by"],
             created_by_name=campaign["created_by_name"],
-            talentAcquisitionTeam=campaign["talentAcquisitionTeam"],  # Include in response
+            talentAcquisitionTeam=campaign["talentAcquisitionTeam"],
             endDate=campaign.get("endDate"),
             Interview=self._convert_objectid_to_str(campaign.get("Interview", []))
         )
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+class CampaignManager:
+    def __init__(self):
+        self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+        self.client = MongoClient(self.mongo_uri)
+        self.db = self.client["calendar_app"]
+        self.campaign_manager_collection = self.db["campaign_manager"]
+        self.client_collection = self.db["clients"]
 
-class ClientResponse(BaseModel):
-    id: str
-    companyName: str
-    location: str
-    industry: str
-    description: str
-    logoPath: Optional[str] = None
+    async def create_manager_campaign(self, campaign: ManagerCampaignCreate) -> ManagerCampaignResponse:
+        logger.info(f"Creating campaign for client_id: {campaign.client_id}")
+
+        # Validate input fields
+        if not campaign.title.strip():
+            logger.error("Campaign title is required")
+            raise HTTPException(status_code=400, detail="Campaign title is required")
+        if not campaign.description.strip():
+            logger.error("Description is required")
+            raise HTTPException(status_code=400, detail="Description is required")
+        if not campaign.contactPerson.strip():
+            logger.error("Contact person is required")
+            raise HTTPException(status_code=400, detail="Contact person is required")
+        if not campaign.contactNumber.strip():
+            logger.error("Contact number is required")
+            raise HTTPException(status_code=400, detail="Contact number is required")
+        if not campaign.location.strip():
+            logger.error("Location is required")
+            raise HTTPException(status_code=400, detail="Location is required")
+        # Validate client_id exists
+        if not self.client_collection.find_one({"_id": campaign.client_id}):
+            logger.error(f"Client not found: {campaign.client_id}")
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        # Create campaign data
+        campaign_id = str(uuid4())
+        campaign_data = {
+            "_id": campaign_id,
+            "title": campaign.title,
+            "description": campaign.description,
+            "contactPerson": campaign.contactPerson,
+            "contactNumber": campaign.contactNumber,
+            "location": campaign.location,
+            "startDate": campaign.startDate,
+            "client_id": campaign.client_id,
+            "created_at": datetime.utcnow()
+        }
+
+        # Insert campaign into collection
+        result = self.campaign_manager_collection.insert_one(campaign_data)
+        if not result.inserted_id:
+            logger.error("Failed to create campaign")
+            raise HTTPException(status_code=500, detail="Failed to create campaign")
+
+        logger.info(f"Campaign created successfully with id: {campaign_id}")
+        return ManagerCampaignResponse(
+            id=campaign_id,
+            title=campaign.title,
+            description=campaign.description,
+            contactPerson=campaign.contactPerson,
+            contactNumber=campaign.contactNumber,
+            location=campaign.location,
+            startDate=campaign.startDate,
+            client_id=campaign.client_id
+        )
+
+    async def get_all_manager_campaigns(self, client_id: Optional[str] = None) -> List[ManagerCampaignResponse]:
+        query = {"client_id": client_id} if client_id else {}
+        campaigns = list(self.campaign_manager_collection.find(query))
+        return [
+            ManagerCampaignResponse(
+                id=str(campaign["_id"]),
+                title=campaign["title"],
+                description=campaign["description"],
+                contactPerson=campaign["contactPerson"],
+                contactNumber=campaign["contactNumber"],
+                location=campaign["location"],
+                startDate=campaign["startDate"],
+                client_id=campaign["client_id"]
+            ) for campaign in campaigns
+        ]
+
+    async def get_manager_campaign(self, campaign_id: str) -> ManagerCampaignResponse:
+        campaign = self.campaign_manager_collection.find_one({"_id": campaign_id})
+        if not campaign:
+            logger.error(f"Campaign not found: {campaign_id}")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        return ManagerCampaignResponse(
+            id=str(campaign["_id"]),
+            title=campaign["title"],
+            description=campaign["description"],
+            contactPerson=campaign["contactPerson"],
+            contactNumber=campaign["contactNumber"],
+            location=campaign["location"],
+            startDate=campaign["startDate"],
+            client_id=campaign["client_id"]
+        )
 
 class ClientTracker:
     def __init__(self):
@@ -372,3 +517,7 @@ class ClientTracker:
         except Exception as e:
             logger.error(f"Error fetching client {client_id}: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Failed to fetch client: {str(e)}")
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
