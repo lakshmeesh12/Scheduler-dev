@@ -14,9 +14,16 @@ from typing import Any, Dict, List, Optional
 from fastapi import File, UploadFile
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from campaign_tracker import CampaignTracker as CampaignManager
-from campaign_tracker import CampaignTracker, ClientTracker, ClientResponse, CampaignCreate, CampaignResponse, ManagerCampaignCreate, ManagerCampaignResponse, CampaignManager
+from campaign_tracker import CampaignTracker, ClientTracker, ClientResponse, CampaignCreate, CampaignResponse, ManagerCampaignCreate, ManagerCampaignResponse, CampaignManager, TalentAcquisitionTeamMember, CampaignDetailsUpdate
+from agent import Agent
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
 
 app = FastAPI()
+
+agent = Agent()
 login_handler = LoginHandler()
 calendar_handler = CalendarHandler()
 event_scheduler = EventScheduler()
@@ -466,7 +473,38 @@ async def create_campaign(campaign: CampaignCreate):
     except Exception as e:
         logger.error(f"Server error in create_campaign: {str(e)}")
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+    
 
+#to update the talent aquisation team
+@app.put("/api/campaign/{campaign_id}/team", response_model=CampaignResponse)
+async def update_campaign_team(campaign_id: str, talentAcquisitionTeam: List[TalentAcquisitionTeamMember]):
+    try:
+        logger.info(f"Updating talent acquisition team for campaign_id: {campaign_id}")
+        result = await campaign_tracker.update_campaign_team(campaign_id, talentAcquisitionTeam)
+        logger.info(f"Successfully updated team for campaign_id: {campaign_id}")
+        return JSONResponse(result.dict())
+    except HTTPException as e:
+        logger.error(f"Update campaign team error: {e.detail}")
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error in update_campaign_team: {str(e)}")
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+    
+#to update th job details
+
+@app.put("/api/campaign/{campaign_id}/details", response_model=CampaignResponse)
+async def update_campaign_details(campaign_id: str, details: CampaignDetailsUpdate):
+    try:
+        logger.info(f"Updating campaign details for campaign_id: {campaign_id}")
+        result = await campaign_tracker.update_campaign_details(campaign_id, details)
+        logger.info(f"Successfully updated details for campaign_id: {campaign_id}")
+        return JSONResponse(result.dict())
+    except HTTPException as e:
+        logger.error(f"Update campaign details error: {e.detail}")
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error in update_campaign_details: {str(e)}")
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
 # class CampaignResponse(BaseModel):
 #     id: str
 #     title: str
@@ -556,6 +594,7 @@ async def get_manager_campaign(campaign_id: str):
 from bson import ObjectId
 
 rounds_collection = db["interview_rounds"]
+campaign_tracker_collection = db["campaign-tracker"]
 
 class PanelMember(BaseModel):
     user_id: str
@@ -594,7 +633,15 @@ class InterviewRoundData(BaseModel):
     clientId: str
     sessionId: Optional[str] = None
     createdAt: datetime = datetime.utcnow()
+    name: str
 
+class CandidateRounds(BaseModel):
+    candidateId: str
+    campaignId: str
+    clientId: str
+    rounds: List[InterviewRoundData]
+
+# Replace the save_interview_round endpoint with the following:
 @app.post("/interview-rounds/")
 def save_interview_round(round: InterviewRoundData):
     print("Backend: Received request to save interview round:", round.dict())
@@ -604,23 +651,76 @@ def save_interview_round(round: InterviewRoundData):
         print("Backend: Storing campaignId as string:", round_dict["campaignId"])
         print("Backend: Storing clientId as string:", round_dict["clientId"])
         print("Backend: Storing sessionId as string:", round_dict["sessionId"])
+        print("Backend: Storing round id:", round_dict["id"])
         
-        print("Backend: Inserting round into MongoDB:", round_dict)
-        result = rounds_collection.insert_one(round_dict)
-        print("Backend: Round saved successfully with ID:", str(result.inserted_id))
-        return {"message": "Interview round saved successfully", "id": str(result.inserted_id)}
+        # Save to interview_rounds collection
+        query = {
+            "candidateId": round_dict["candidateId"],
+            "campaignId": round_dict["campaignId"],
+            "clientId": round_dict["clientId"]
+        }
+        existing_doc = rounds_collection.find_one(query)
+        
+        if existing_doc:
+            rounds = existing_doc.get("rounds", [])
+            round_index = next((i for i, r in enumerate(rounds) if r["id"] == round_dict["id"]), -1)
+            if round_index >= 0:
+                rounds[round_index] = round_dict
+                rounds_collection.update_one(query, {"$set": {"rounds": rounds}})
+                print("Backend: Round updated successfully in interview_rounds with ID:", round_dict["id"])
+            else:
+                rounds.append(round_dict)
+                rounds_collection.update_one(query, {"$set": {"rounds": rounds}})
+                print("Backend: Round appended successfully in interview_rounds with ID:", round_dict["id"])
+        else:
+            new_doc = {
+                "candidateId": round_dict["candidateId"],
+                "campaignId": round_dict["campaignId"],
+                "clientId": round_dict["clientId"],
+                "rounds": [round_dict]
+            }
+            rounds_collection.insert_one(new_doc)
+            print("Backend: New document created in interview_rounds with round ID:", round_dict["id"])
+        
+        # Save to campaign-tracker collection in Interview Round field
+        campaign_query = {
+            "client_id": round_dict["clientId"],
+            "Interview.campaign_id": round_dict["campaignId"]
+        }
+        existing_campaign_doc = campaign_tracker_collection.find_one(campaign_query)
+        
+        if existing_campaign_doc:
+            campaign_rounds = existing_campaign_doc.get("Interview Round", [])
+            round_index = next((i for i, r in enumerate(campaign_rounds) if r["id"] == round_dict["id"] and r["candidateId"] == round_dict["candidateId"]), -1)
+            if round_index >= 0:
+                campaign_rounds[round_index] = round_dict
+                campaign_tracker_collection.update_one(campaign_query, {"$set": {"Interview Round": campaign_rounds}})
+                print("Backend: Round updated successfully in campaign-tracker Interview Round with ID:", round_dict["id"], "for candidateId:", round_dict["candidateId"])
+            else:
+                campaign_rounds.append(round_dict)
+                campaign_tracker_collection.update_one(campaign_query, {"$set": {"Interview Round": campaign_rounds}})
+                print("Backend: Round appended successfully in campaign-tracker Interview Round with ID:", round_dict["id"], "for candidateId:", round_dict["candidateId"])
+        else:
+            print("Backend: No campaign-tracker document found for campaign_id:", round_dict["campaignId"], "client_id:", round_dict["clientId"], "in Interview array")
+            raise HTTPException(status_code=404, detail="Campaign document not found in campaign-tracker")
+        
+        return {"message": "Interview round saved successfully", "id": round_dict["id"]}
     except Exception as e:
         print("Backend: Unexpected error saving interview round:", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to save interview round: {str(e)}")
-
 @app.get("/interview-rounds/{candidate_id}/{campaign_id}/{client_id}")
 def get_interview_rounds(candidate_id: str, campaign_id: str, client_id: str):
     print("Backend: Fetching interview rounds for candidate_id:", candidate_id, "campaign_id:", campaign_id, "client_id:", client_id)
     try:
-        rounds = list(rounds_collection.find({"candidateId": candidate_id, "campaignId": campaign_id, "clientId": client_id}))
+        query = {"candidateId": candidate_id, "campaignId": campaign_id, "clientId": client_id}
+        doc = rounds_collection.find_one(query)
+        if not doc:
+            print("Backend: No rounds found for the given candidate, campaign, and client")
+            return []
+        rounds = doc.get("rounds", [])
         print("Backend: Found rounds:", rounds)
         for round in rounds:
-            round["_id"] = str(round["_id"])
+            round["id"] = round["id"]
             round["candidateId"] = str(round["candidateId"])
             round["campaignId"] = str(round["campaignId"])
             round["clientId"] = str(round["clientId"])
@@ -631,6 +731,49 @@ def get_interview_rounds(candidate_id: str, campaign_id: str, client_id: str):
         print("Backend: Error fetching interview rounds:", str(e))
         raise HTTPException(status_code=500, detail=f"Failed to fetch interview rounds: {str(e)}")
     
+class SyncRequest(BaseModel):
+    collections: Optional[List[str]] = None
+
+class ChatRequest(BaseModel):
+    query: str
+
+class ChatResponse(BaseModel):
+    response: str
+    context_used: int
+    collections_involved: List[str]
+
+@app.post("/sync-data")
+async def sync_data(request: SyncRequest):
+    """Sync MongoDB collections to Qdrant vector database"""
+    try:
+        return await agent.sync_data(request.collections)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Enhanced chat endpoint with relationship-aware context building"""
+    try:
+        result = await agent.chat(request.query)
+        return ChatResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat processing error: {str(e)}")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    try:
+        return await agent.health_check()
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+
+@app.get("/collections")
+async def list_collections():
+    """List available MongoDB collections"""
+    try:
+        return await agent.list_collections()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))    
 
 
     
@@ -647,12 +790,13 @@ import sys
 import time
 import tempfile
 import traceback
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable, Tuple
 from uuid import uuid4
 from functools import lru_cache
 import hashlib
 from io import BytesIO
 import aiofiles
+import concurrent
 import uvicorn
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
@@ -662,10 +806,16 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query, status
 from utils.chatgpt import run_chatgpt, emb_text
 from db.mongo.config import db as mongo_db
-from utils.parser import parse_files
-from process import AggregatedScore, GenericSkillMatcher, MatchingResponse, ResumeProcessor, SkillPriority, create_skill_matcher, get_skill_match_details
+from utils.parser import DocumentParser
+from utils.helper import compute_duration
+from process import AggregatedScore, GenericSkillMatcher, MatchingResponse, ResumeProcessor, SkillPriority, create_skill_matcher, get_skill_match_details, process_all_files, process_file
 from utils.prompt_templates.chunking_template import ChunkingPromptTemplate
 from utils.prompt_templates.job_description_template import JobDescriptionTemplate
+from motor.motor_asyncio import AsyncIOMotorClient
+from resume_processor import Resume
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+from process import JDProcessor, create_skill_matcher, get_skill_match_details, JobDescription, SkillMatchDetails, AggregatedScore, MatchingResponse
 
 
 load_dotenv("./.env")
@@ -697,45 +847,43 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
-# app = FastAPI()
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  
-#     allow_credentials=False,
-#     allow_methods=["*"],
-#     allow_headers=["*"]
-# )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 @app.get("/ping")
 def ping():
     return {"message": "pong"}
 
-processor = ResumeProcessor()
 
-async def process_resumes_background(file_paths: List[str], uploaded_files_info: List[Dict]):
+mongo_client = AsyncIOMotorClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
+processor = Resume()
+
+async def process_resumes_background(file_paths: List[Tuple[bytes: str]], uploaded_files_info: List[Dict]):
     """Background task to process resumes"""
     try:
         logger.info(f"Starting background processing of {len(file_paths)} files")
-        
         # Parse files
-        parse_result = await parse_files(file_paths)
+        parser = DocumentParser(max_workers=16, batch_size=5)
+        parse_result = await parser.parse_bytes(file_paths)
         if not parse_result:
             logger.error("Failed to parse files")
-            return
+            return {}
         
         logger.info("Successfully parsed files")
+
+        file_results = parse_result['stats']
+
+        if file_results.get("failed_files"):
+            logger.warning(f"Failed to read {file_results['failure_count']} files: {file_results['failed_files']}")
         
-        # Read parsed files from temp directory
-        temp_files = [f for f in os.listdir(processor.TEMP_DIR) if f.endswith('.doctags.txt')]
-        temp_file_paths = [os.path.join(processor.TEMP_DIR, f) for f in temp_files]
-        
-        file_results = await processor.read_multiple_files(temp_file_paths)
-        
-        if file_results["failed"]:
-            logger.warning(f"Failed to read {len(file_results['failed'])} files: {file_results['failed']}")
-        
-        successful_files = file_results["successful"]
+        successful_files = file_results['parsed_content']
         if not successful_files:
             logger.error("No files were successfully read")
             return
@@ -745,29 +893,8 @@ async def process_resumes_background(file_paths: List[str], uploaded_files_info:
         # Process chunking
         chunked = []
         start_time = time.time()
-        
-        for file_path, content in successful_files.items():
-            try:
-                prompt = ChunkingPromptTemplate(content)
-                response = await run_chatgpt(prompt.prompt, "You are expert in extracting structured content from doctags text", 0.4)
-                
-                try:
-                    cleaned_response = response.replace("```", "").lstrip("python\n").strip()
-                    parsed_response = json.loads(cleaned_response)
-                    
-                    parsed_response['profile_id'] = str(uuid4())
-                    parsed_response['file_name'] = os.path.basename(file_path)
-                    parsed_response['processed_at'] = datetime.now()
-                    
-                    chunked.append(parsed_response)
-                    
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.error(f"Failed to parse response for file {file_path}: {str(e)}")
-                    continue
-                    
-            except Exception as e:
-                logger.error(f"Error processing file {file_path}: {str(e)}")
-                continue
+
+        chunked = await process_all_files(successful_files)
         
         end_time = time.time()
         duration = end_time - start_time
@@ -775,34 +902,65 @@ async def process_resumes_background(file_paths: List[str], uploaded_files_info:
         
         if chunked:
             try:
+                logger.info("inserting profiles in database...")
                 inserted = await mongo_db['profiles'].insert_many(chunked)
                 logger.info(f"Successfully inserted {len(inserted.inserted_ids)} profiles into database")
-            except Exception as e:
-                logger.error(f"Failed to insert profiles into database: {str(e)}")
+            except Exception as err:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err} ::"
+                logger.error(f"Failed to insert profiles into database: {message}")
         else:
             logger.warning("No profiles were successfully processed")
         
-    except Exception as e:
-        logger.error(f"Background processing failed: {str(e)}")
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Background processing failed: {message}")
     finally:
         # Cleanup temporary files
         processor.cleanup_files(file_paths)
         logger.info("Cleanup completed")
 
+
+class UploadResponse(BaseModel):
+    message: str
+    session_id: str
+    matching_results: MatchingResponse
+
+class UploadResponse(BaseModel):
+    message: str
+    session_id: str
+    matching_results: MatchingResponse
+
+class UploadResponse(BaseModel):
+    message: str
+    session_id: str
+    matching_results: MatchingResponse
+
+class UploadResponse(BaseModel):
+    message: str
+    session_id: str
+    matching_results: MatchingResponse
+
+class UploadResponse(BaseModel):
+    message: str
+    session_id: str
+    matching_results: dict
+
 @app.post("/upload-resumes")
 async def upload_resumes(
-    background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...)
 ):
     """
-    Upload and process multiple resume files (PDF or DOCX)
+    Upload and process multiple resume files (PDF or DOCX) synchronously
     
     Args:
-        background_tasks: FastAPI background tasks
         files: List of uploaded files
     
     Returns:
-        JSON response with status and message
+        JSON response with processing results
     """
     
     # Input validation
@@ -851,26 +1009,22 @@ async def upload_resumes(
     try:
         # Save uploaded files
         saved_files = []
-        save_errors = []
         uploaded_files_info = []
         
         for file in valid_files:
-            save_result = await processor.save_uploaded_file(file)
-            if save_result["success"]:
-                saved_files.append(save_result["path"])
-                uploaded_files_info.append({
-                    "original_name": file.filename,
-                    "saved_path": save_result["path"],
-                    "content_type": file.content_type
-                })
-            else:
-                save_errors.append({
-                    "filename": file.filename,
-                    "error": save_result["error"]
-                })
-        
-        if save_errors:
-            logger.warning(f"Failed to save {len(save_errors)} files")
+            content = await file.read()
+            saved_path = "resumes/" + file.filename
+            saved_files.append((file.filename, content))
+            checksum = hashlib.sha256(content).hexdigest()
+            uploaded_files_info.append(
+                {
+                    "file_name": file.filename,
+                    "file_path": saved_path,
+                    "file_content": content,
+                    "file_hash": checksum,
+                    "file_type": file.content_type
+                }
+            )
         
         if not saved_files:
             raise HTTPException(
@@ -878,38 +1032,34 @@ async def upload_resumes(
                 detail="Failed to save any files"
             )
         
-        # Add background task for processing
-        background_tasks.add_task(
-            process_resumes_background,
-            saved_files,
-            uploaded_files_info
-        )
+        # Process resumes synchronously
+        logger.info(f"Starting processing of {len(saved_files)} files")
+        result = await processor.process_resumes(saved_files)
         
-        logger.info(f"Started background processing for {len(saved_files)} files")
+        # Convert datetime and ObjectId objects to strings in the result
+        for profile in result["stats"]["parsed_content"].values():
+            if "processed_at" in profile and isinstance(profile["processed_at"], datetime):
+                profile["processed_at"] = profile["processed_at"].isoformat()
+            if "_id" in profile and isinstance(profile["_id"], ObjectId):
+                profile["_id"] = str(profile["_id"])
         
         response_data = {
-            "message": "Files uploaded successfully. Processing started in background.",
-            "uploaded_files_count": len(saved_files),
-            "status": "processing"
+            "message": result["message"],
+            "stats": result["stats"],
+            "session_id": str(hashlib.md5(str(saved_files).encode()).hexdigest()),
+            "matching_results": result["stats"]["parsed_content"]
         }
-        
-        if save_errors:
-            response_data["save_errors"] = save_errors
         
         return JSONResponse(
             content=response_data,
-            status_code=202
+            status_code=200
         )
     
     except Exception as err:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
-        logger.error(f"Failed to process resumes: {str(err)}")
-        
-        # Cleanup any saved files on error
-        if 'saved_files' in locals():
-            processor.cleanup_files(saved_files)
+        logger.error(f"Failed to process resumes: {message}")
         
         raise HTTPException(
             status_code=500,
@@ -936,7 +1086,8 @@ async def get_profiles():
         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
         logger.error(message)
         return JSONResponse(content={"message": message, "body": {}}, status_code=500)
-    
+
+
 @app.get("/upload-status/{profile_id}")
 async def get_upload_status(profile_id: str):
     """
@@ -976,6 +1127,7 @@ async def get_upload_status(profile_id: str):
             status_code=500,
             detail="Error checking profile status"
         )
+
 
 @app.post("/jd")
 async def upload_jd(
@@ -1042,20 +1194,13 @@ async def get_matching_resumes(
     start_time = datetime.now()
     
     try:
-        # Accept either job_description or file
+        # Validate job_id format
         if not job_description and not file:
-            print("job_description:", job_description)
-            print("file:", file)
-            raise HTTPException(
-                status_code=400,
-                detail="Either job_description or file upload is required and cannot be empty"
-            )
-
+            raise HTTPException(status_code=400, detail="Either job_description or file upload is required and cannot be empty")
+        data = []
         jd_text = job_description or ""
-
-        # Process file if provided
-        if file and file.filename:
-            temp_dir = tempfile.gettempdir().replace(r"\\", "/")
+        if file:
+            temp_dir = tempfile.gettempdir().replace(r"\\","/")
             contents = await file.read()
             filename = file.filename
             temp_file = os.path.join(temp_dir, filename)
@@ -1065,19 +1210,24 @@ async def get_matching_resumes(
             if filename.endswith('.txt'):
                 file_stats = contents.decode('utf-8')
             elif filename.endswith('.pdf') or filename.endswith('.docx'):
-                file_stats = await parse_files(temp_file)
+                parser = DocumentParser(max_workers=1, batch_size=1)
+                file_stats = await parser.parse_bytes(contents)
+                file_data = file_stats['stats']['parsed_content']
+                
+                for k,v in file_data.items():
+                    await process_file(k, v, data)
             else:
                 return JSONResponse(content={"message": "Unsupported file type"}, status_code=400)
 
             os.remove(temp_file)
             filename = filename.split(".")[0] + "doctags.txt"
 
-            with open("temp/" + filename, "r", encoding="utf-8") as f:
+            with open("temp/"+filename, "r", encoding="utf-8") as f:
                 jd_data = f.read()
-            jd_text += "\n" + jd_data
+            jd_text += "\n" + jd_data 
 
         jd = {}
-        if jd_text.strip():
+        if jd_text:
             prompt = JobDescriptionTemplate(jd_text)
             system_prompt = "You are expert in extracting content from job description"
             jd = await run_chatgpt(prompt.prompt, system_prompt, 0.5)
@@ -1085,7 +1235,12 @@ async def get_matching_resumes(
             logger.info("Contents extracted from job description")
             print(jd.keys())
 
-        # Validate JD content
+        # Initialize matcher and results
+        matcher = GenericSkillMatcher()
+        matches = []
+
+        
+        # Validate job description structure
         required_job_fields = ['job_title', 'primary_skills', 'secondary_skills']
         missing_job_fields = [field for field in required_job_fields if field not in jd]
         if missing_job_fields:
@@ -1101,7 +1256,9 @@ async def get_matching_resumes(
             logger.info("No job title available")
 
         # Fetch matching resumes
-        resumes_cursor = mongo_db['profiles'].find({}, {"_id": 0})
+        resumes_cursor = mongo_db['profiles'].find({
+            "active": True
+        }, {"_id": 0})
         resumes = await resumes_cursor.to_list(length=None)
         
         if not resumes:
@@ -1115,19 +1272,17 @@ async def get_matching_resumes(
                 execution_time_ms=0.0
             )
         
-        # Match calculation
-        matcher = GenericSkillMatcher()
-        matches = []
-
+        # Process each resume
         for resume in resumes:
             try:
-                # Validate resume
+                # Validate resume structure
                 required_resume_fields = ['name', 'primary_skills', 'secondary_skills']
                 missing_resume_fields = [field for field in required_resume_fields if field not in resume]
                 if missing_resume_fields:
                     logger.warning(f"Resume {resume.get('profile_id', 'unknown')} missing fields: {missing_resume_fields}")
                     continue
                 
+                # Calculate individual scores
                 score1 = matcher.calculate_skill_match_score(
                     resume['primary_skills'], jd['primary_skills']
                 )['overall_score']
@@ -1144,8 +1299,10 @@ async def get_matching_resumes(
                     resume['secondary_skills'], jd['secondary_skills']
                 )['overall_score']
                 
-                aggregated_score = (score1 + (0.5 * score2) + (0.5 * score3) + score4)
+                # Calculate aggregated score using the specified formula
+                aggregated_score = (score1 + score2 + score3 + score4)/3
                 
+                # Get detailed skill matching for primary vs primary and secondary vs secondary
                 primary_vs_primary = get_skill_match_details(
                     resume['primary_skills'], jd['primary_skills'], matcher
                 )
@@ -1154,9 +1311,10 @@ async def get_matching_resumes(
                     resume['secondary_skills'], jd['secondary_skills'], matcher
                 )
                 
+                # Create result object
                 result = AggregatedScore(
                     resume_name=resume['name'],
-                    resume_id=str(resume.get('profile_id', '')),
+                    profile_id=str(resume.get('profile_id', '')),
                     aggregated_score=round(aggregated_score, 2),
                     score_breakdown={
                         'primary_vs_primary': round(score1, 2),
@@ -1174,11 +1332,13 @@ async def get_matching_resumes(
                 logger.error(f"Error processing resume {resume.get('profile_id', 'unknown')}: {resume_error}")
                 continue
         
-        matches = [x for x in matches if x.aggregated_score > 0.2]
+        # Sort by aggregated score (descending) and assign ranks
+        matches = [x for x in matches if x.aggregated_score>0.2]
         matches.sort(key=lambda x: x.aggregated_score, reverse=True)
         for i, match in enumerate(matches, 1):
             match.rank = i
         
+        # Calculate execution time
         end_time = datetime.now()
         execution_time_ms = (end_time - start_time).total_seconds() * 1000
         
@@ -1205,34 +1365,6 @@ async def get_matching_resumes(
             detail=f"Internal server error: {str(err)}"
         )
 
-@app.get("/profile")
-async def fetch_all_profiles():
-    try:
-        profiles_cursor = mongo_db['profiles'].find({}, {"_id": 0})
-        profiles = await profiles_cursor.to_list(length=None)  # Fetch all profiles
-
-        # Convert datetime fields to string if present
-        for profile in profiles:
-            if "processed_at" in profile and profile["processed_at"]:
-                profile["processed_at"] = str(profile["processed_at"])
-
-        return JSONResponse(
-            content={
-                "message": "Successfully fetched all profiles.",
-                "count": len(profiles),
-                "body": profiles
-            },
-            status_code=200
-        )
-    except Exception as err:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
-        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
-        logger.error(message)
-        return JSONResponse(
-            content={"message": "Error fetching profiles"},
-            status_code=500
-        )
 
 @app.get("/profile/{profile_id}")
 async def fetch_profile(profile_id: str):
@@ -1298,7 +1430,6 @@ async def get_resume_score(
     except Exception as e:
         logger.error(f"Error calculating resume score: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
 
 
 if __name__ == "__main__":

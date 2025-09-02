@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { sendChatQuery } from "@/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   id: string;
@@ -23,51 +26,14 @@ const QChat = ({ isFloating = true }: QChatProps) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Hello! I'm your QChat assistant. I can help you with questions about clients, campaigns, jobs, and hiring processes. How can I assist you today?",
+      text: "Hello! I'm your QChat assistant, here to help with your recruitment queries. Ask me about clients, campaigns, jobs, or interviews, and I'll provide all the details you need. What's on your mind?",
       isBot: true,
-      timestamp: new Date()
-    }
+      timestamp: new Date(),
+    },
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const dummyResponses = [
-    {
-      keywords: ["client", "company", "add client"],
-      response: "To add a new client, click the 'Add New Client' button on the Client Dashboard. Fill in the company name, industry, location, description, and optionally upload a logo. You can also search for existing clients using the search bar."
-    },
-    {
-      keywords: ["campaign", "create campaign", "new campaign"],
-      response: "Campaigns are organized under clients. First select a client, then click 'New Campaign' to create one. You'll need to provide a title, description, contact person, contact number, location, and start date."
-    },
-    {
-      keywords: ["job", "jobs", "create job", "new job"],
-      response: "Jobs are created within campaigns. Navigate to a campaign and click 'New Job' to create a job posting. You can specify job title, description, experience level, positions, department, and assign talent acquisition team members."
-    },
-    {
-      keywords: ["candidate", "search candidate", "find candidate"],
-      response: "You can search for candidates by uploading a job description. The system will match candidates based on skills and experience. You can also view profiles, schedule interviews, and track candidate progress through different rounds."
-    },
-    {
-      keywords: ["interview", "schedule", "schedule interview"],
-      response: "To schedule an interview, select a candidate and click 'Schedule Interview'. You can choose panel members, set date/time, add interview rounds, and send notifications to all participants."
-    },
-    {
-      keywords: ["help", "how", "what", "guide"],
-      response: "I can help you navigate the hiring platform! The main workflow is: Client Dashboard → Campaign Dashboard → Jobs Dashboard → Candidate Search. You can manage clients, create campaigns, post jobs, find candidates, and schedule interviews."
-    }
-  ];
-
-  const getResponse = (message: string): string => {
-    const lowercaseMessage = message.toLowerCase();
-    const matchedResponse = dummyResponses.find(item =>
-      item.keywords.some(keyword => lowercaseMessage.includes(keyword))
-    );
-    
-    return matchedResponse?.response || 
-      "I understand you're asking about the hiring platform. Could you be more specific? I can help with clients, campaigns, jobs, candidates, interviews, and general navigation questions.";
-  };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -76,24 +42,33 @@ const QChat = ({ isFloating = true }: QChatProps) => {
       id: Date.now().toString(),
       text: inputMessage,
       isBot: false,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsTyping(true);
 
-    // Simulate 2 second delay
-    setTimeout(() => {
+    try {
+      const botResponseText = await sendChatQuery(inputMessage);
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: getResponse(inputMessage),
+        text: botResponseText,
         isBot: true,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, botResponse]);
+      setMessages((prev) => [...prev, botResponse]);
+    } catch (error) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `Oops, something went wrong: ${error instanceof Error ? error.message : "Unknown error"}. Please try again or rephrase your question!`,
+        isBot: true,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 2000);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -120,14 +95,14 @@ const QChat = ({ isFloating = true }: QChatProps) => {
         )}
         
         {isOpen && (
-          <Card className="w-80 h-96 glass border border-white/20 shadow-xl">
+          <Card className="w-96 h-[28rem] glass border border-white/20 shadow-xl">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
-                  <CardTitle className="text-sm">QChat</CardTitle>
+                  <CardTitle className="text-sm font-semibold">QChat Assistant</CardTitle>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Button
@@ -150,8 +125,8 @@ const QChat = ({ isFloating = true }: QChatProps) => {
               </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
-              <div className="flex flex-col h-64">
-                <div className="flex-1 overflow-y-auto space-y-3 mb-3">
+              <div className="flex flex-col h-80">
+                <div className="flex-1 overflow-y-auto space-y-3 mb-3 pr-2">
                   {messages.map((message) => (
                     <div
                       key={message.id}
@@ -164,7 +139,25 @@ const QChat = ({ isFloating = true }: QChatProps) => {
                             : "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                         }`}
                       >
-                        {message.text}
+                        {message.isBot ? (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({ node, ...props }) => <h1 className="text-lg font-bold mt-2 mb-1" {...props} />,
+                              h2: ({ node, ...props }) => <h2 className="text-base font-semibold mt-2 mb-1" {...props} />,
+                              h3: ({ node, ...props }) => <h3 className="text-sm font-medium mt-2 mb-1" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc list-inside my-1 space-y-1" {...props} />,
+                              ol: ({ node, ...props }) => <ol className="list-decimal list-inside my-1 space-y-1" {...props} />,
+                              li: ({ node, ...props }) => <li className="ml-2" {...props} />,
+                              p: ({ node, ...props }) => <p className="my-1" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                            }}
+                          >
+                            {message.text}
+                          </ReactMarkdown>
+                        ) : (
+                          message.text
+                        )}
                       </div>
                     </div>
                   ))}
@@ -173,8 +166,8 @@ const QChat = ({ isFloating = true }: QChatProps) => {
                       <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
                         </div>
                       </div>
                     </div>
@@ -186,7 +179,7 @@ const QChat = ({ isFloating = true }: QChatProps) => {
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ask me anything..."
+                    placeholder="Ask about campaigns, interviews, or clients..."
                     className="flex-1 text-sm"
                   />
                   <Button
@@ -241,7 +234,25 @@ const QChat = ({ isFloating = true }: QChatProps) => {
                     : "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
                 }`}
               >
-                {message.text}
+                {message.isBot ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-2 mb-1" {...props} />,
+                      h2: ({ node, ...props }) => <h2 className="text-lg font-semibold mt-2 mb-1" {...props} />,
+                      h3: ({ node, ...props }) => <h3 className="text-base font-medium mt-2 mb-1" {...props} />,
+                      ul: ({ node, ...props }) => <ul className="list-disc list-inside my-2 space-y-1" {...props} />,
+                      ol: ({ node, ...props }) => <ol className="list-decimal list-inside my-2 space-y-1" {...props} />,
+                      li: ({ node, ...props }) => <li className="ml-4" {...props} />,
+                      p: ({ node, ...props }) => <p className="my-1" {...props} />,
+                      strong: ({ node, ...props }) => <strong className="font-semibold" {...props} />,
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>
+                ) : (
+                  message.text
+                )}
               </div>
             </div>
           </div>
@@ -254,8 +265,8 @@ const QChat = ({ isFloating = true }: QChatProps) => {
             <div className="bg-muted rounded-lg px-4 py-3 text-muted-foreground">
               <div className="flex space-x-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
               </div>
             </div>
           </div>
@@ -268,7 +279,7 @@ const QChat = ({ isFloating = true }: QChatProps) => {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask me anything about clients, campaigns, jobs, or hiring..."
+            placeholder="Ask about campaigns, interviews, or clients..."
             className="flex-1"
           />
           <Button

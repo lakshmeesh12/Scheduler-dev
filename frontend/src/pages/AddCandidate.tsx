@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Upload, User, FileText, Sparkles, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Upload, User, FileText, Sparkles, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { uploadResumes, importExcel } from "@/api";
+import { Progress } from "@/components/ui/progress";
 
 type AddMode = "choice" | "manual" | "resume" | "excel";
 
@@ -32,6 +33,8 @@ const AddCandidate = () => {
   const [mode, setMode] = useState<AddMode>("choice");
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentFile, setCurrentFile] = useState("");
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -58,7 +61,7 @@ const AddCandidate = () => {
 
   const handleFileUpload = async (files: FileList) => {
     const fileArray = Array.from(files).filter(file => 
-      file.type === "application/pdf" || file.name.endsWith(".docx")
+      file.type === "application/pdf" || file.name.toLowerCase().endsWith(".docx")
     );
     
     if (fileArray.length === 0) {
@@ -74,27 +77,25 @@ const AddCandidate = () => {
     setUploadedFiles(prev => [...prev, ...fileArray]);
 
     try {
-      const response = await uploadResumes(fileArray);
-      console.log("AddCandidate: API response:", response);
+      const response = await uploadResumes(fileArray, (progress, fileName) => {
+        setUploadProgress(progress);
+        setCurrentFile(fileName);
+      });
 
-      if (response.status === "processing") {
+      if (response.message.includes("successfully")) {
         toast({
-          title: "Files uploaded successfully",
-          description: "Processing started in background. We will update you once it’s done.",
+          title: "Resumes uploaded successfully",
+          description: `Processed ${response.stats.success_count} out of ${response.stats.total_count} files in ${response.stats.processing_time.toFixed(2)} seconds.`,
           className: "bg-green-600 text-white"
         });
-        setUploadedFiles([]); // Clear uploaded files after success
-        navigate("/add-candidate");
+        setUploadedFiles([]);
+        setUploadProgress(0);
+        setCurrentFile("");
+        // Do not navigate; stay on the resume upload page
       } else if (response.errors) {
         toast({
           title: "Some files failed validation",
           description: response.errors.map(err => `${err.filename}: ${err.error}`).join("\n"),
-          variant: "destructive"
-        });
-      } else if (response.save_errors) {
-        toast({
-          title: "Some files failed to save",
-          description: response.save_errors.map(err => `${err.filename}: ${err.error}`).join("\n"),
           variant: "destructive"
         });
       }
@@ -106,6 +107,8 @@ const AddCandidate = () => {
       });
     } finally {
       setIsLoading(false);
+      setUploadProgress(0);
+      setCurrentFile("");
     }
   };
 
@@ -159,7 +162,6 @@ const AddCandidate = () => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       toast({
@@ -297,7 +299,7 @@ const AddCandidate = () => {
                 {isLoading ? (
                   <>
                     <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                    Uploading...
+                    Processing...
                   </>
                 ) : (
                   "Browse Files"
@@ -339,6 +341,16 @@ const AddCandidate = () => {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="mt-6">
+              <h4 className="font-semibold mb-2">Processing Progress</h4>
+              <Progress value={uploadProgress} className="w-full" />
+              <p className="text-sm text-gray-600 mt-2">
+                {currentFile ? `Processing: ${currentFile}` : "Processing files..."}
+              </p>
             </div>
           )}
         </CardContent>
@@ -429,7 +441,6 @@ const AddCandidate = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
-        {/* Candidate Information */}
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -581,7 +592,6 @@ const AddCandidate = () => {
           </CardContent>
         </Card>
 
-        {/* Resume Upload for Manual Mode */}
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center">
@@ -616,7 +626,6 @@ const AddCandidate = () => {
           </CardContent>
         </Card>
 
-        {/* Submit Button */}
         <div className="flex justify-center">
           <Button 
             type="submit" 
@@ -642,7 +651,6 @@ const AddCandidate = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
-      {/* Header */}
       <header className="glass border-b border-white/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">

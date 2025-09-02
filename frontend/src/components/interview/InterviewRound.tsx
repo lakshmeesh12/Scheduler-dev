@@ -51,6 +51,7 @@ export interface InterviewRoundData {
   candidateId: string;
   sessionId: string | null;
   createdAt?: string;
+  name: string;
 }
 
 interface InterviewRoundProps {
@@ -58,8 +59,6 @@ interface InterviewRoundProps {
   onUpdateRound: (roundId: string, updates: Partial<InterviewRoundData>) => void;
   onDeleteRound: (roundId: string) => void;
   candidateInfo: ApiCandidate;
-  isActive: boolean;
-  onSetActive: () => void;
 }
 
 export const InterviewRound = ({
@@ -67,8 +66,6 @@ export const InterviewRound = ({
   onUpdateRound,
   onDeleteRound,
   candidateInfo,
-  isActive,
-  onSetActive
 }: InterviewRoundProps) => {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [detailsCollapsed, setDetailsCollapsed] = useState(false);
@@ -150,11 +147,11 @@ export const InterviewRound = ({
   const hasCompleteDetails = round.panel.length > 0 && round.details;
 
   return (
-    <Card className={`glass-card transition-all duration-300 ${isActive ? 'ring-2 ring-primary' : ''}`}>
-      <CardHeader className="cursor-pointer" onClick={onSetActive}>
+    <Card className="glass-card transition-all duration-300">
+      <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-3">
-            <span className="gradient-text">Round {round.roundNumber}</span>
+            <span className="gradient-text">{round.name}</span>
             {getStatusBadge()}
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -162,8 +159,7 @@ export const InterviewRound = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   console.log("InterviewRound: Deleting round:", round.id);
                   onDeleteRound(round.id);
                 }}
@@ -180,162 +176,158 @@ export const InterviewRound = ({
           <div className="text-red-600 p-4">{error}</div>
         </CardContent>
       )}
-      {isActive && round.status !== 'completed' && (
-        <CardContent className="space-y-6">
-          {/* Panel Selection */}
-          <Collapsible open={!panelCollapsed || round.panel.length === 0} onOpenChange={(open) => setPanelCollapsed(!open)}>
+      <CardContent className="space-y-6">
+        {/* Panel Selection */}
+        <Collapsible open={!panelCollapsed || round.panel.length === 0} onOpenChange={(open) => setPanelCollapsed(!open)}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Users className="w-5 h-5 mr-2 text-primary" />
+              Panel Selection
+            </h3>
+            {round.panel.length > 0 && (
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  {panelCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                </Button>
+              </CollapsibleTrigger>
+            )}
+          </div>
+          {round.panel.length > 0 && panelCollapsed && (
+            <div className="mt-2 p-4 bg-muted/50 rounded-lg">
+              <div className="flex flex-wrap gap-2">
+                {round.panel.map((member) => (
+                  <Badge key={member.user_id} variant="outline" className="bg-background">
+                    {member.display_name} ({member.role || "Interviewer"})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          <CollapsibleContent className="mt-4">
+            <PanelSelection onSave={handlePanelSave} initialPanel={round.panel} />
+          </CollapsibleContent>
+        </Collapsible>
+        {/* Interview Details */}
+        {round.panel.length > 0 && (
+          <Collapsible open={!detailsCollapsed || !round.details} onOpenChange={(open) => setDetailsCollapsed(!open)}>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold flex items-center">
-                <Users className="w-5 h-5 mr-2 text-primary" />
-                Panel Selection
+                <Clock className="w-5 h-5 mr-2 text-primary" />
+                Interview Details
               </h3>
-              {round.panel.length > 0 && (
+              {round.details && (
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm">
-                    {panelCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                    {detailsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                   </Button>
                 </CollapsibleTrigger>
               )}
             </div>
-            {round.panel.length > 0 && panelCollapsed && (
+            {round.details && detailsCollapsed && (
               <div className="mt-2 p-4 bg-muted/50 rounded-lg">
-                <div className="flex flex-wrap gap-2">
-                  {round.panel.map((member) => (
-                    <Badge key={member.user_id} variant="outline" className="bg-background">
-                      {member.display_name} ({member.role || "Interviewer"})
-                    </Badge>
-                  ))}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><strong>Title:</strong> {round.details.title}</div>
+                  <div><strong>Duration:</strong> {round.details.duration} minutes</div>
+                  <div><strong>Date:</strong> {round.details.date?.toLocaleDateString() || 'N/A'}</div>
+                  <div className="flex items-center"><Globe className="w-3 h-3 mr-1" /><strong>Timezone:</strong> {round.details.preferred_timezone}</div>
                 </div>
               </div>
             )}
             <CollapsibleContent className="mt-4">
-              <PanelSelection onSave={handlePanelSave} initialPanel={round.panel} />
+              <InterviewDetailsForm onSave={handleDetailsSave} initialDetails={round.details} />
             </CollapsibleContent>
           </Collapsible>
-          {/* Interview Details */}
-          {round.panel.length > 0 && (
-            <Collapsible open={!detailsCollapsed || !round.details} onOpenChange={(open) => setDetailsCollapsed(!open)}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center">
-                  <Clock className="w-5 h-5 mr-2 text-primary" />
-                  Interview Details
-                </h3>
-                {round.details && (
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {detailsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                )}
-              </div>
-              {round.details && detailsCollapsed && (
-                <div className="mt-2 p-4 bg-muted/50 rounded-lg">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><strong>Title:</strong> {round.details.title}</div>
-                    <div><strong>Duration:</strong> {round.details.duration} minutes</div>
-                    <div><strong>Date:</strong> {round.details.date?.toLocaleDateString() || 'N/A'}</div>
-                    <div className="flex items-center"><Globe className="w-3 h-3 mr-1" /><strong>Timezone:</strong> {round.details.preferred_timezone}</div>
-                  </div>
-                </div>
-              )}
-              <CollapsibleContent className="mt-4">
-                <InterviewDetailsForm onSave={handleDetailsSave} initialDetails={round.details} />
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          {/* Availability & Scheduling */}
-          {hasCompleteDetails && round.status !== 'scheduled' && (
-            <div className="space-y-6">
-              <h3 className="text-lg font-semibold flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-primary" />
-                Schedule Interview
-              </h3>
-              <div className="space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm">Scheduling Method</Label>
-                    <div className="flex rounded-md border bg-background">
-                      <Button
-                        type="button"
-                        variant={schedulingMethod === 'direct' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          console.log("InterviewRound: Setting scheduling method to direct");
-                          setSchedulingMethod('direct');
-                          onUpdateRound(round.id, { schedulingOption: 'direct' });
-                        }}
-                      >
-                        Direct invite
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={schedulingMethod === 'candidate_choice' ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => {
-                          console.log("InterviewRound: Setting scheduling method to candidate_choice");
-                          setSchedulingMethod('candidate_choice');
-                          onUpdateRound(round.id, { schedulingOption: 'candidate_choice' });
-                        }}
-                      >
-                        Candidate preference
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch id={`override-${round.id}`} checked={overrideWorkingHours} onCheckedChange={setOverrideWorkingHours} />
-                    <Label htmlFor={`override-${round.id}`} className="text-sm">Override time slots</Label>
-                  </div>
-                </div>
-                <AvailabilityCalendar
-                  panelMembers={round.panel}
-                  selectedDate={round.details?.date}
-                  preferredTimezone={round.details?.preferred_timezone || 'UTC'}
-                  candidate={candidateInfo}
-                  interviewDetails={round.details}
-                  onTimeSlotSelect={(slot) => {
-                    console.log("InterviewRound: Time slot selected:", slot);
-                    onUpdateRound(round.id, { selectedTimeSlot: slot, status: 'scheduled' });
-                    setCandidateOptions([slot]);
-                  }}
-                  roundStatus={round.status}
-                />
-              </div>
-            </div>
-          )}
-          {/* Candidate Notification */}
-          {round.status === 'scheduled' && (candidateOptions.length > 0 || round.selectedTimeSlot) && (
+        )}
+        {/* Availability & Scheduling */}
+        {hasCompleteDetails && round.status !== 'scheduled' && round.status !== 'completed' && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-semibold flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-primary" />
+              Schedule Interview
+            </h3>
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center">
-                <MessageSquare className="w-5 h-5 mr-2 text-primary" />
-                Candidate Notification
-              </h3>
-              <CandidateNotification
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Scheduling Method</Label>
+                  <div className="flex rounded-md border bg-background">
+                    <Button
+                      type="button"
+                      variant={schedulingMethod === 'direct' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        console.log("InterviewRound: Setting scheduling method to direct");
+                        setSchedulingMethod('direct');
+                        onUpdateRound(round.id, { schedulingOption: 'direct' });
+                      }}
+                    >
+                      Direct invite
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={schedulingMethod === 'candidate_choice' ? 'default' : 'ghost'}
+                      size="sm"
+                      onClick={() => {
+                        console.log("InterviewRound: Setting scheduling method to candidate_choice");
+                        setSchedulingMethod('candidate_choice');
+                        onUpdateRound(round.id, { schedulingOption: 'candidate_choice' });
+                      }}
+                    >
+                      Candidate preference
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id={`override-${round.id}`} checked={overrideWorkingHours} onCheckedChange={setOverrideWorkingHours} />
+                  <Label htmlFor={`override-${round.id}`} className="text-sm">Override time slots</Label>
+                </div>
+              </div>
+              <AvailabilityCalendar
+                panelMembers={round.panel}
+                selectedDate={round.details?.date}
+                preferredTimezone={round.details?.preferred_timezone || 'UTC'}
                 candidate={candidateInfo}
-                timeSlots={candidateOptions.length > 0 ? candidateOptions : round.selectedTimeSlot ? [round.selectedTimeSlot] : []}
                 interviewDetails={round.details}
-                mode={schedulingMethod === 'direct' ? 'single' : 'multiple'}
-                onNotificationSent={() => {
-                  console.log("InterviewRound: Notification sent, updating round status to completed");
-                  const updatedRound = { ...round, status: 'completed' };
-                  onUpdateRound(round.id, { status: 'completed' });
-                  setCandidateOptions([]);
-                  saveRoundToBackend(updatedRound).catch(err => {
-                    console.error("InterviewRound: Failed to save round after notification:", err);
-                    setError(err instanceof Error ? err.message : 'Failed to save round to backend');
-                  });
+                onTimeSlotSelect={(slot) => {
+                  console.log("InterviewRound: Time slot selected:", slot);
+                  onUpdateRound(round.id, { selectedTimeSlot: slot, status: 'scheduled' });
+                  setCandidateOptions([slot]);
                 }}
+                roundStatus={round.status}
               />
             </div>
-          )}
-        </CardContent>
-      )}
-      {isActive && round.status === 'completed' && (
-        <CardContent>
-          <div className="text-center text-green-600">
-            <p>Interview Round {round.roundNumber} Completed</p>
           </div>
-        </CardContent>
-      )}
+        )}
+        {/* Candidate Notification */}
+        {round.status === 'scheduled' && (candidateOptions.length > 0 || round.selectedTimeSlot) && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2 text-primary" />
+              Candidate Notification
+            </h3>
+            <CandidateNotification
+              candidate={candidateInfo}
+              timeSlots={candidateOptions.length > 0 ? candidateOptions : round.selectedTimeSlot ? [round.selectedTimeSlot] : []}
+              interviewDetails={round.details}
+              mode={schedulingMethod === 'direct' ? 'single' : 'multiple'}
+              onNotificationSent={() => {
+                console.log("InterviewRound: Notification sent, updating round status to completed");
+                const updatedRound = { ...round, status: 'completed' };
+                onUpdateRound(round.id, { status: 'completed' });
+                setCandidateOptions([]);
+                saveRoundToBackend(updatedRound).catch(err => {
+                  console.error("InterviewRound: Failed to save round after notification:", err);
+                  setError(err instanceof Error ? err.message : 'Failed to save round to backend');
+                });
+              }}
+            />
+          </div>
+        )}
+        {round.status === 'completed' && (
+          <div className="text-center text-green-600 p-4">
+            <p>{round.name} Completed</p>
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 };

@@ -28,3 +28,7 @@ Thumbs.db
 
 # Excel temporary files
 ~$*.xlsx
+
+
+# Ignore temp directory
+backend/temp/

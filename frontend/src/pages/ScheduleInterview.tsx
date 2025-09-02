@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Plus, Bell, BarChart } from "lucide-react";
+import { ArrowLeft, Calendar, Plus, Bell, BarChart, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InterviewRound } from "@/components/interview/InterviewRound";
 import { ReminderSettings, ReminderConfig } from "@/components/interview/ReminderSettings";
 import { InterviewStatusProgress, InterviewStatus } from "@/components/interview/InterviewStatusProgress";
 import { fetchProfileById, fetchInterviewRounds, ApiCandidate, InterviewRoundData } from "@/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
 export interface InterviewRoundData {
   id: string;
@@ -41,12 +46,23 @@ export interface InterviewRoundData {
   clientId: string;
   sessionId: string | null;
   createdAt?: string;
+  name: string;
 }
+
+const slugify = (text: string) => {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '') || `round-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 const ScheduleInterview = () => {
   const { id } = useParams<{ id: string }>();
   const [rounds, setRounds] = useState<InterviewRoundData[]>([]);
-  const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
+  const [collapsedRounds, setCollapsedRounds] = useState<{ [key: string]: boolean }>({});
   const [candidateStatus, setCandidateStatus] = useState<'in_progress' | 'completed' | 'selected' | 'rejected' | 'on_hold'>('in_progress');
   const [reminderConfig, setReminderConfig] = useState<ReminderConfig>({
     candidateReminders: { enabled: true, timings: ['24h', '1h'], customMessage: '' },
@@ -58,6 +74,8 @@ const ScheduleInterview = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showSchemaEditor, setShowSchemaEditor] = useState(false);
+  const [schemaNames, setSchemaNames] = useState<string[]>([]);
 
   // Load data from backend and localStorage
   useEffect(() => {
@@ -70,16 +88,14 @@ const ScheduleInterview = () => {
 
     // Load persisted data from localStorage as fallback
     const savedRounds = localStorage.getItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`);
-    const savedActiveRoundId = localStorage.getItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`);
     const savedCandidateStatus = localStorage.getItem(`candidate_status_${id}_${storedCampaignId}_${storedClientId}`);
     const savedReminderConfig = localStorage.getItem(`reminder_config_${id}_${storedCampaignId}_${storedClientId}`);
     const savedResponseStatus = localStorage.getItem(`response_status_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedSchemaNames = localStorage.getItem(`schema_names_${id}_${storedCampaignId}_${storedClientId}`);
+    const savedCollapsedRounds = localStorage.getItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`);
 
     if (savedRounds) {
       setRounds(JSON.parse(savedRounds));
-    }
-    if (savedActiveRoundId) {
-      setActiveRoundId(savedActiveRoundId);
     }
     if (savedCandidateStatus) {
       setCandidateStatus(savedCandidateStatus as typeof candidateStatus);
@@ -89,6 +105,12 @@ const ScheduleInterview = () => {
     }
     if (savedResponseStatus) {
       setResponseStatus(savedResponseStatus as typeof responseStatus);
+    }
+    if (savedSchemaNames) {
+      setSchemaNames(JSON.parse(savedSchemaNames));
+    }
+    if (savedCollapsedRounds) {
+      setCollapsedRounds(JSON.parse(savedCollapsedRounds));
     }
 
     // Load rounds from backend
@@ -101,30 +123,24 @@ const ScheduleInterview = () => {
         const backendRounds = await fetchInterviewRounds(id, storedCampaignId, storedClientId);
         console.log("ScheduleInterview: Loaded rounds from backend:", backendRounds);
         if (backendRounds.length > 0) {
-          setRounds(backendRounds);
-          setActiveRoundId(backendRounds[0].id);
-          localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(backendRounds));
-          localStorage.setItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`, backendRounds[0].id);
+          const mappedRounds = backendRounds.map((r, index) => ({
+            ...r,
+            name: r.name || `Round ${r.roundNumber || index + 1}`,
+            id: r.id || slugify(r.name || `Round ${r.roundNumber || index + 1}`),
+          }));
+          setRounds(mappedRounds);
+          setSchemaNames(mappedRounds.map(r => r.name));
+          // Initialize collapsed state: completed rounds are collapsed by default
+          const initialCollapsed = mappedRounds.reduce((acc, r) => ({
+            ...acc,
+            [r.id]: r.status === 'completed'
+          }), {});
+          setCollapsedRounds(initialCollapsed);
+          localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(mappedRounds));
+          localStorage.setItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(initialCollapsed));
+          localStorage.setItem(`schema_names_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(mappedRounds.map(r => r.name)));
         } else {
-          // Initialize first round if no backend data
-          const firstRound: InterviewRoundData = {
-            id: 'round-1',
-            roundNumber: 1,
-            status: 'draft',
-            panel: [],
-            details: null,
-            selectedTimeSlot: null,
-            schedulingOption: null,
-            candidateId: id,
-            campaignId: storedCampaignId,
-            clientId: storedClientId,
-            sessionId: storedSessionId,
-            createdAt: new Date().toISOString(),
-          };
-          setRounds([firstRound]);
-          setActiveRoundId(firstRound.id);
-          localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify([firstRound]));
-          localStorage.setItem(`active_round_id_${id}_${storedCampaignId}_${storedClientId}`, firstRound.id);
+          setShowSchemaEditor(true);
         }
       } catch (error) {
         console.error("ScheduleInterview: Error loading rounds from backend:", error);
@@ -152,12 +168,25 @@ const ScheduleInterview = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (showSchemaEditor) {
+      if (rounds.length > 0) {
+        setSchemaNames(rounds.map(r => r.name));
+      } else {
+        setSchemaNames(['Screening']);
+      }
+    }
+  }, [showSchemaEditor, rounds]);
+
   const addNewRound = () => {
     const storedCampaignId = sessionStorage.getItem("campaignId");
     const storedClientId = sessionStorage.getItem("clientId");
+    const newRoundName = schemaNames[rounds.length] || `Round ${rounds.length + 1}`;
+    const newRoundId = slugify(newRoundName);
     const newRound: InterviewRoundData = {
-      id: `round-${rounds.length + 1}`,
+      id: newRoundId,
       roundNumber: rounds.length + 1,
+      name: newRoundName,
       status: 'draft',
       panel: [],
       details: null,
@@ -169,12 +198,27 @@ const ScheduleInterview = () => {
       sessionId,
       createdAt: new Date().toISOString(),
     };
-    setRounds([...rounds, newRound]);
-    setActiveRoundId(newRound.id);
+    const updatedRounds = [...rounds, newRound];
+    setRounds(updatedRounds);
+    setCollapsedRounds(prev => ({ ...prev, [newRound.id]: false }));
+    const updatedSchemaNames = [...schemaNames, newRoundName];
+    setSchemaNames(updatedSchemaNames);
+    localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(updatedRounds));
+    localStorage.setItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify({ ...collapsedRounds, [newRound.id]: false }));
+    localStorage.setItem(`schema_names_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(updatedSchemaNames));
   };
 
   const updateRound = (roundId: string, updates: Partial<InterviewRoundData>) => {
-    setRounds(rounds.map(round => round.id === roundId ? { ...round, ...updates } : round));
+    const updatedRounds = rounds.map(round => round.id === roundId ? { ...round, ...updates } : round);
+    setRounds(updatedRounds);
+    const storedCampaignId = sessionStorage.getItem("campaignId");
+    const storedClientId = sessionStorage.getItem("clientId");
+    // Update collapsed state if round is completed
+    if (updates.status === 'completed') {
+      setCollapsedRounds(prev => ({ ...prev, [roundId]: true }));
+    }
+    localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(updatedRounds));
+    localStorage.setItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify({ ...collapsedRounds, [roundId]: updates.status === 'completed' }));
   };
 
   const deleteRound = (roundId: string) => {
@@ -183,10 +227,42 @@ const ScheduleInterview = () => {
       const renumberedRounds = filteredRounds.map((round, index) => ({
         ...round,
         roundNumber: index + 1,
-        id: `round-${index + 1}`,
+        id: slugify(round.name),
       }));
       setRounds(renumberedRounds);
-      if (activeRoundId === roundId) setActiveRoundId(renumberedRounds[0]?.id || null);
+      const updatedSchemaNames = renumberedRounds.map(r => r.name);
+      setSchemaNames(updatedSchemaNames);
+      const updatedCollapsedRounds = { ...collapsedRounds };
+      delete updatedCollapsedRounds[roundId];
+      setCollapsedRounds(updatedCollapsedRounds);
+      const storedCampaignId = sessionStorage.getItem("campaignId");
+      const storedClientId = sessionStorage.getItem("clientId");
+      localStorage.setItem(`interview_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(renumberedRounds));
+      localStorage.setItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(updatedCollapsedRounds));
+      localStorage.setItem(`schema_names_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(updatedSchemaNames));
+    }
+  };
+
+  const toggleRoundCollapse = (roundId: string) => {
+    setCollapsedRounds(prev => {
+      const newCollapsedRounds = { ...prev, [roundId]: !prev[roundId] };
+      const storedCampaignId = sessionStorage.getItem("campaignId");
+      const storedClientId = sessionStorage.getItem("clientId");
+      localStorage.setItem(`collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`, JSON.stringify(newCollapsedRounds));
+      return newCollapsedRounds;
+    });
+  };
+
+  const getStatusBadge = (status: InterviewRoundData['status']) => {
+    switch (status) {
+      case 'draft':
+        return <Badge variant="secondary" className="bg-muted">Draft</Badge>;
+      case 'scheduled':
+        return <Badge className="bg-primary">Scheduled</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-600">Completed</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
   };
 
@@ -290,25 +366,149 @@ const ScheduleInterview = () => {
       <main className="w-full px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold gradient-text">Interview Rounds</h2>
-          <Button onClick={addNewRound} className="bg-primary hover:bg-primary/90">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Another Round
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowSchemaEditor(true)}>
+              Edit Schema
+            </Button>
+            <Button onClick={addNewRound} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Another Round
+            </Button>
+          </div>
         </div>
         <div className="space-y-6">
           {rounds.map((round) => (
-            <InterviewRound
+            <Collapsible
               key={round.id}
-              round={round}
-              onUpdateRound={updateRound}
-              onDeleteRound={deleteRound}
-              candidateInfo={candidate}
-              isActive={activeRoundId === round.id}
-              onSetActive={() => setActiveRoundId(round.id)}
-            />
+              open={!collapsedRounds[round.id]}
+              onOpenChange={() => toggleRoundCollapse(round.id)}
+            >
+              <CollapsibleTrigger asChild>
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-t-lg cursor-pointer hover:bg-muted/70">
+                  <div className="flex items-center gap-3">
+                    <span className="gradient-text font-semibold">{round.name}</span>
+                    {getStatusBadge(round.status)}
+                    {round.details?.date && (
+                      <span className="text-sm text-gray-500">
+                        {new Date(round.details.date).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    {collapsedRounds[round.id] ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <InterviewRound
+                  round={round}
+                  onUpdateRound={updateRound}
+                  onDeleteRound={deleteRound}
+                  candidateInfo={candidate}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           ))}
         </div>
       </main>
+      <Dialog open={showSchemaEditor} onOpenChange={setShowSchemaEditor}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{rounds.length === 0 ? 'Define Interview Schema' : 'Edit Interview Schema'}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {schemaNames.map((name, index) => (
+              <div key={index} className="flex items-center space-x-2">
+                <Label className="w-24">Round {index + 1}</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => {
+                    const newNames = [...schemaNames];
+                    newNames[index] = e.target.value;
+                    setSchemaNames(newNames);
+                  }}
+                />
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    const newNames = schemaNames.filter((_, i) => i !== index);
+                    setSchemaNames(newNames);
+                  }}
+                  disabled={schemaNames.length === 1}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+            <Button
+              onClick={() => setSchemaNames([...schemaNames, `Round ${schemaNames.length + 1}`])}
+              variant="secondary"
+            >
+              Add New Round
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                const storedCampaignId = sessionStorage.getItem("campaignId")!;
+                const storedClientId = sessionStorage.getItem("clientId")!;
+                let newRounds: InterviewRoundData[] = [];
+                for (let i = 0; i < schemaNames.length; i++) {
+                  const newRoundName = schemaNames[i];
+                  const newRoundId = slugify(newRoundName);
+                  if (i < rounds.length) {
+                    newRounds.push({
+                      ...rounds[i],
+                      name: newRoundName,
+                      roundNumber: i + 1,
+                      id: newRoundId,
+                    });
+                  } else {
+                    newRounds.push({
+                      id: newRoundId,
+                      roundNumber: i + 1,
+                      name: newRoundName,
+                      status: 'draft',
+                      panel: [],
+                      details: null,
+                      selectedTimeSlot: null,
+                      schedulingOption: null,
+                      candidateId: id!,
+                      campaignId: storedCampaignId,
+                      clientId: storedClientId,
+                      sessionId: sessionId,
+                      createdAt: new Date().toISOString(),
+                    });
+                  }
+                }
+                setRounds(newRounds);
+                setCollapsedRounds(prev => {
+                  const newCollapsedRounds = newRounds.reduce((acc, r) => ({
+                    ...acc,
+                    [r.id]: r.status === 'completed'
+                  }), {});
+                  localStorage.setItem(
+                    `collapsed_rounds_${id}_${storedCampaignId}_${storedClientId}`,
+                    JSON.stringify(newCollapsedRounds)
+                  );
+                  return newCollapsedRounds;
+                });
+                localStorage.setItem(
+                  `interview_rounds_${id}_${storedCampaignId}_${storedClientId}`,
+                  JSON.stringify(newRounds)
+                );
+                localStorage.setItem(
+                  `schema_names_${id}_${storedCampaignId}_${storedClientId}`,
+                  JSON.stringify(schemaNames)
+                );
+                setShowSchemaEditor(false);
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

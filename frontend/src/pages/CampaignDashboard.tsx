@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Plus, ArrowLeft, Building, MapPin, ChevronRight, User, Briefcase } from "lucide-react";
+import { Search, Plus, Briefcase, ChevronRight, User, MapPin, BarChart2, Users, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +9,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { fetchAllClients, Client, fetchAllManagerCampaigns, ManagerCampaignCreate, ManagerCampaign, createManagerCampaign, fetchAllCampaigns } from "@/api";
-import QChat from "@/components/QChat"; // Added import
+import QChat from "@/components/QChat";
+
+interface CampaignStats {
+  totalCampaigns: number;
+  activeCampaigns: number;
+  totalCandidates: number;
+  activeCandidates: number;
+  avgCampaignDuration: number;
+}
 
 const CampaignDashboard = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [campaigns, setCampaigns] = useState<ManagerCampaign[]>([]);
+  const [stats, setStats] = useState<CampaignStats>({
+    totalCampaigns: 0,
+    activeCampaigns: 0,
+    totalCandidates: 0,
+    activeCandidates: 0,
+    avgCampaignDuration: 0,
+  });
   const [isCreateCampaignModalOpen, setIsCreateCampaignModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +80,30 @@ const CampaignDashboard = () => {
     try {
       const fetchedCampaigns = await fetchAllManagerCampaigns(clientId);
       setCampaigns(fetchedCampaigns);
+      // Calculate stats
+      const today = new Date();
+      const activeCampaigns = fetchedCampaigns.filter(campaign => new Date(campaign.startDate) <= today).length;
+      const totalCandidates = fetchedCampaigns.reduce((sum, campaign) => sum + (campaign.candidates?.length || 0), 0);
+      const activeCandidates = fetchedCampaigns.reduce(
+        (sum, campaign) => sum + (campaign.candidates?.filter(c => c.status === 'active').length || 0),
+        0
+      );
+      const avgCampaignDuration = fetchedCampaigns.length > 0 
+        ? fetchedCampaigns.reduce((sum, campaign) => {
+            const start = new Date(campaign.startDate);
+            const end = campaign.endDate ? new Date(campaign.endDate) : today;
+            const duration = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+            return sum + duration;
+          }, 0) / fetchedCampaigns.length
+        : 0;
+
+      setStats({
+        totalCampaigns: fetchedCampaigns.length,
+        activeCampaigns,
+        totalCandidates,
+        activeCandidates,
+        avgCampaignDuration: Number(avgCampaignDuration.toFixed(1)),
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load campaigns");
     } finally {
@@ -100,6 +139,8 @@ const CampaignDashboard = () => {
       });
       setFormErrors({});
       setIsCreateCampaignModalOpen(false);
+      // Reload campaigns to update stats
+      await loadCampaigns();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create campaign");
     } finally {
@@ -122,11 +163,9 @@ const CampaignDashboard = () => {
       setIsLoading(true);
       setError(null);
       
-      // Call the API to fetch jobs for this specific campaign
       const jobs = await fetchAllCampaigns(clientId, campaignId);
       console.log('Jobs fetched:', jobs);
       
-      // Navigate to the campaign manager page with both IDs
       navigate(`/campaign-manager/${clientId}/${campaignId}`);
     } catch (err) {
       console.error('Error fetching campaign jobs:', err);
@@ -144,7 +183,7 @@ const CampaignDashboard = () => {
             <div className="flex items-center space-x-3">
               <SidebarTrigger className="p-2" />
               <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center">
-                <Building className="w-6 h-6 text-white" />
+                <Briefcase className="w-6 h-6 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold gradient-text">
@@ -154,14 +193,6 @@ const CampaignDashboard = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => navigate("/client-dashboard")}
-                disabled={isLoading}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Clients
-              </Button>
               <Button
                 onClick={() => setIsCreateCampaignModalOpen(true)}
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
@@ -174,55 +205,72 @@ const CampaignDashboard = () => {
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-4"> {/* reduced py */}
         {isLoading && <p className="text-center">Loading...</p>}
         {error && <p className="text-center text-red-500">{error}</p>}
-        <div className="space-y-6">
-          {selectedClient && (
-            <Card className="glass">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <img
-                    src={selectedClient.logoPath || "/default-logo.png"}
-                    alt={`${selectedClient.companyName} logo`}
-                    className="w-16 h-16 object-contain rounded-lg"
-                  />
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold">{selectedClient.companyName}</h2>
-                    <p className="text-gray-600">{selectedClient.description}</p>
-                    <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Building className="w-4 h-4" />
-                        <span>{selectedClient.industry}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <MapPin className="w-4 h-4" />
-                        <span>{selectedClient.location}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">{campaigns.length}</p>
-                    <p className="text-sm text-gray-500">Total Campaigns</p>
+
+        <div className="space-y-4"> {/* reduced vertical spacing */}
+          <Card className="glass">
+            <CardHeader className="pb-2"> {/* tighter header */}
+              <CardTitle className="text-lg">Campaign Statistics</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4"> {/* reduced padding */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3"> {/* smaller gaps */}
+                <div className="flex items-center space-x-2 p-3 bg-white/10 rounded-lg">
+                  <BarChart2 className="w-6 h-6 text-blue-600" /> {/* smaller icons */}
+                  <div>
+                    <p className="text-xl font-bold">{stats.totalCampaigns}</p>
+                    <p className="text-xs text-gray-500">Total Campaigns</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-          <Card className="glass">
-            <CardContent className="p-6">
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search campaigns..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  disabled={isLoading}
-                />
+
+                <div className="flex items-center space-x-2 p-3 bg-white/10 rounded-lg">
+                  <Users className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="text-xl font-bold">{stats.activeCampaigns}</p>
+                    <p className="text-xs text-gray-500">Active Campaigns</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 p-3 bg-white/10 rounded-lg">
+                  <Users className="w-6 h-6 text-purple-600" />
+                  <div>
+                    <p className="text-xl font-bold">{stats.totalCandidates.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">Total Candidates</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 p-3 bg-white/10 rounded-lg">
+                  <Users className="w-6 h-6 text-orange-600" />
+                  <div>
+                    <p className="text-xl font-bold">{stats.activeCandidates.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">Active Candidates</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 p-3 bg-white/10 rounded-lg">
+                  <Clock className="w-6 h-6 text-red-600" />
+                  <div>
+                    <p className="text-xl font-bold">{stats.avgCampaignDuration} days</p>
+                    <p className="text-xs text-gray-500">Avg. Campaign Duration</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
+          
+          {/* Reduced height search section */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search campaigns..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-10 glass"
+              disabled={isLoading}
+            />
+          </div>
+          
           {filteredCampaigns.length === 0 && !isLoading && !error && (
             <div className="text-center py-12">
               <Briefcase className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -365,7 +413,7 @@ const CampaignDashboard = () => {
           </Dialog>
         </div>
       </main>
-      <QChat /> {/* Added QChat component */}
+      <QChat />
     </div>
   );
 };

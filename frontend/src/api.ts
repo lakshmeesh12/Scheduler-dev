@@ -185,6 +185,33 @@ export const fetchAllAvailableSlots = async (sessionId: string): Promise<Availab
   }
 };
 
+export interface PanelMember {
+  user_id: string;
+  display_name: string;
+  email: string;
+  role?: string;
+  avatar?: string;
+}
+
+export interface InterviewDetails {
+  title: string;
+  description: string;
+  duration: number;
+  date: Date | null;
+  location: string;
+  meetingType: 'in-person' | 'virtual';
+  preferred_timezone: string;
+}
+
+export interface InterviewRoundTimeSlot {
+  id: string;
+  start: string;
+  end: string;
+  date: string;
+  available: boolean;
+  availableMembers: string[];
+}
+
 export interface InterviewRoundData {
   id: string;
   roundNumber: number;
@@ -198,23 +225,17 @@ export interface InterviewRoundData {
   clientId: string;
   sessionId: string | null;
   createdAt?: string;
+  name: string;
 }
 
-export const fetchInterviewRounds = async (candidateId: string, campaignId: string, clientId: string): Promise<InterviewRoundData[]> => {
-  try {
-    console.log("api.ts: Fetching interview rounds for candidateId:", candidateId, "campaignId:", campaignId, "clientId:", clientId);
-    const response = await apiClient.get<InterviewRoundData[]>(`/interview-rounds/${candidateId}/${campaignId}/${clientId}`);
-    console.log("api.ts: Interview rounds fetched successfully:", response.data);
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error("api.ts: Error response from backend:", error.response.status, error.response.data);
-      throw new Error((error.response.data as ApiError).error || `HTTP error ${error.response.status}: Failed to fetch interview rounds`);
-    }
-    console.error("api.ts: Network error fetching interview rounds:", error);
-    throw new Error('Network error while fetching interview rounds');
-  }
-};
+export interface InterviewRoundResponse {
+  message: string;
+  id: string;
+}
+
+export interface ApiError {
+  error: string;
+}
 
 export const saveInterviewRound = async (roundData: InterviewRoundData): Promise<InterviewRoundResponse> => {
   try {
@@ -236,6 +257,27 @@ export const saveInterviewRound = async (roundData: InterviewRoundData): Promise
     }
     console.error("api.ts: Network error saving interview round:", error);
     throw new Error('Network error while saving interview round');
+  }
+};
+
+export const fetchInterviewRounds = async (candidateId: string, campaignId: string, clientId: string): Promise<InterviewRoundData[]> => {
+  try {
+    console.log("api.ts: Fetching interview rounds for candidateId:", candidateId, "campaignId:", campaignId, "clientId:", clientId);
+    const response = await apiClient.get<InterviewRoundData[]>(`/interview-rounds/${candidateId}/${campaignId}/${clientId}`);
+    const rounds = response.data.map(round => ({
+      ...round,
+      id: round.id,
+      name: round.name || `Round ${round.roundNumber}`,
+    }));
+    console.log("api.ts: Interview rounds fetched successfully:", rounds);
+    return rounds;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("api.ts: Error response from backend:", error.response.status, error.response.data);
+      throw new Error((error.response.data as ApiError).error || `HTTP error ${error.response.status}: Failed to fetch interview rounds`);
+    }
+    console.error("api.ts: Network error fetching interview rounds:", error);
+    throw new Error('Network error while fetching interview rounds');
   }
 };
 
@@ -471,12 +513,16 @@ const trackEvent = async (sessionId: string): Promise<EventTrackerResponse> => {
 
 interface UploadResumeResponse {
   message: string;
-  uploaded_files_count?: number;
-  status?: string;
-  save_errors?: Array<{
-    filename: string;
-    error: string;
-  }>;
+  session_id: string;
+  stats: {
+    success_count: number;
+    failure_count: number;
+    failed_files: string[];
+    total_count: number;
+    parsed_content: { [fileName: string]: any };
+    processing_time: number;
+  };
+  matching_results: { [fileName: string]: any };
   errors?: Array<{
     filename: string;
     error: string;
@@ -484,16 +530,50 @@ interface UploadResumeResponse {
   valid_files_count?: number;
 }
 
-const uploadResumes = async (files: File[]): Promise<UploadResumeResponse> => {
+const uploadResumes = async (
+  files: File[],
+  onProgress?: (progress: number, fileName: string) => void
+): Promise<UploadResumeResponse> => {
   const formData = new FormData();
   files.forEach((file) => {
     formData.append('files', file);
   });
 
-  return fetchWithToken(`${BASE_URL}/upload-resumes`, {
-    method: 'POST',
-    body: formData,
-  });
+  // Simulate progress updates (since server-side streaming isn't implemented)
+  const totalFiles = files.length;
+  let processedFiles = 0;
+
+  const simulateProgress = async () => {
+    while (processedFiles < totalFiles) {
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate processing delay
+      processedFiles++;
+      const progress = Math.round((processedFiles / totalFiles) * 100);
+      if (onProgress) {
+        onProgress(progress, files[processedFiles - 1]?.name || '');
+      }
+    }
+  };
+
+  // Start progress simulation
+  const progressPromise = simulateProgress();
+
+  try {
+    const response = await fetchWithToken(`${BASE_URL}/upload-resumes`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    // Wait for progress simulation to complete
+    await progressPromise;
+
+    return response;
+  } catch (error) {
+    // Ensure progress reaches 100% even on error
+    if (onProgress && processedFiles < totalFiles) {
+      onProgress(100, files[processedFiles]?.name || '');
+    }
+    throw error;
+  }
 };
 
 interface ImportExcelResponse {
@@ -771,6 +851,43 @@ export interface CampaignCreate {
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
 }
 
+export interface InterviewRound {
+  id: string;
+  roundNumber: number;
+  status: string;
+  panel: Array<{
+    user_id: string;
+    display_name: string;
+    email: string;
+    role?: string;
+    avatar?: string;
+  }>;
+  details?: {
+    title: string;
+    description: string;
+    duration: number;
+    date?: string;
+    location: string;
+    meetingType: string;
+    preferred_timezone: string;
+  };
+  selectedTimeSlot?: {
+    id: string;
+    start: string;
+    end: string;
+    date: string;
+    available: boolean;
+    availableMembers: string[];
+  };
+  schedulingOption?: string;
+  candidateId: string;
+  campaignId: string;
+  clientId: string;
+  sessionId?: string;
+  createdAt: string;
+  name: string;
+}
+
 export interface HiringCampaign {
   id: string;
   jobTitle: string;
@@ -787,11 +904,28 @@ export interface HiringCampaign {
   experienceLevel: "Junior" | "Mid-level" | "Senior";
   jobType: "Full-time" | "Part-time" | "Contract";
   client_id: string;
-  campaign_id: string; // Add campaign_id
+  campaign_id: string;
   created_by: string;
   created_by_name: string;
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
   Interview?: Interview[];
+  Interview_Round?: InterviewRound[]; // Added Interview_Round
+}
+
+export interface InterviewRound {
+  id: string;
+  roundNumber: number;
+  status: string;
+  panel: PanelMember[];
+  details?: InterviewDetails;
+  selectedTimeSlot?: TimeSlot;
+  schedulingOption?: string;
+  candidateId: string;
+  campaignId: string;
+  clientId: string;
+  sessionId?: string;
+  createdAt: string;
+  name: string;
 }
 
 export interface ManagerCampaignCreate {
@@ -813,6 +947,7 @@ export interface ManagerCampaign {
   location: string;
   startDate: string;
   client_id: string;
+  logoPath?: string; // Add logoPath to ManagerCampaign
 }
 
 export const fetchAllCampaigns = async (clientId: string, campaignId: string): Promise<HiringCampaign[]> => {
@@ -873,6 +1008,60 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
       throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
     }
     throw new Error(error instanceof Error ? error.message : 'Network error while creating campaign');
+  }
+};
+//update the campign talent aqusation team inside the candidate search page
+export const updateCampaignTeam = async (campaignId: string, talentAcquisitionTeam: TalentAcquisitionTeamMember[]): Promise<HiringCampaign> => {
+  try {
+    const payload = talentAcquisitionTeam.map(({ name, email, role }) => ({
+      name,
+      email,
+      role,
+    }));
+    console.log('Sending payload to /api/campaign/team:', JSON.stringify(payload, null, 2));
+    const response = await apiClient.put<HiringCampaign>(`/api/campaign/${campaignId}/team`, payload);
+    console.log('API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in updateCampaignTeam:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Update campaign team API error:', error.response.data);
+      throw new Error((error.response.data as ApiError).error || 'Failed to update campaign team');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Network error while updating campaign team');
+  }
+};
+// to update the job details in candidate search page
+export interface CampaignDetailsUpdate {
+  jobTitle: string;
+  description: string;
+  department: string;
+  location: string;
+  jobType: "Full-time" | "Part-time" | "Contract";
+  positions: number;
+}
+
+export const updateCampaignDetails = async (campaignId: string, details: CampaignDetailsUpdate): Promise<HiringCampaign> => {
+  try {
+    const payload = {
+      jobTitle: details.jobTitle,
+      description: details.description,
+      department: details.department,
+      location: details.location,
+      jobType: details.jobType,
+      positions: details.positions,
+    };
+    console.log('Sending payload to /api/campaign/details:', JSON.stringify(payload, null, 2));
+    const response = await apiClient.put<HiringCampaign>(`/api/campaign/${campaignId}/details`, payload);
+    console.log('API response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in updateCampaignDetails:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Update campaign details API error:', error.response.data);
+      throw new Error((error.response.data as ApiError).error || 'Failed to update campaign details');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Network error while updating campaign details');
   }
 };
 
@@ -938,5 +1127,27 @@ export const fetchManagerCampaignById = async (campaignId: string): Promise<Mana
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch campaign');
     }
     throw new Error(error instanceof Error ? error.message : 'Network error while fetching campaign');
+  }
+};
+
+export interface ChatRequest {
+  query: string;
+}
+
+export interface ChatResponse {
+  response: string;
+  context_used: number;
+  collections_involved: string[];
+}
+
+export const sendChatQuery = async (query: string): Promise<string> => {
+  try {
+    const response = await apiClient.post<ChatResponse>('/chat', { query });
+    return response.data.response;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to process chat query');
+    }
+    throw new Error('Network error while processing chat query');
   }
 };

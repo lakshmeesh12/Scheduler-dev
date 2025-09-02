@@ -21,14 +21,15 @@ class TalentAcquisitionTeamMember(BaseModel):
 class CampaignCreate(BaseModel):
     jobTitle: str
     description: str
-    experienceLevel: Literal["Junior", "Mid-level", "Senior"]
+    minExperience: int
+    maxExperience: int
     positions: int
     location: str
     department: str
     jobType: Literal["Full-time", "Part-time", "Contract"]
     startDate: str
     client_id: str
-    campaign_id: str  # Add campaign_id
+    campaign_id: str
     created_by: str
     talentAcquisitionTeam: List[TalentAcquisitionTeamMember]
 
@@ -44,15 +45,17 @@ class CampaignResponse(BaseModel):
     candidatesHired: int
     currentRound: str
     description: str
-    experienceLevel: Literal["Junior", "Mid-level", "Senior"]
+    minExperience: int
+    maxExperience: int
     jobType: Literal["Full-time", "Part-time", "Contract"]
     client_id: str
-    campaign_id: str  # Add campaign_id
+    campaign_id: str
     created_by: str
     created_by_name: str
     talentAcquisitionTeam: List[TalentAcquisitionTeamMember]
     endDate: Optional[str] = None
     Interview: Optional[List[Dict[str, Any]]] = None
+    Interview_Round: Optional[List[Dict[str, Any]]] = None  # Added Interview_Round field
 
 class ClientCreate(BaseModel):
     companyName: str
@@ -86,7 +89,16 @@ class ManagerCampaignResponse(BaseModel):
     location: str
     startDate: str
     client_id: str
+    logoPath: Optional[str] = None
 
+class CampaignDetailsUpdate(BaseModel):
+    jobTitle: str
+    description: str
+    department: str
+    location: str
+    jobType: Literal["Full-time", "Part-time", "Contract"]
+    positions: int
+#this calss is to create jobs and manage jobs
 class CampaignTracker:
     def __init__(self):
         self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
@@ -98,7 +110,6 @@ class CampaignTracker:
         self.campaign_manager_collection = self.db["campaign_manager"]
 
     def _convert_objectid_to_str(self, data: Any) -> Any:
-        """Recursively convert ObjectId to string in a MongoDB document."""
         if isinstance(data, ObjectId):
             return str(data)
         elif isinstance(data, list):
@@ -125,22 +136,21 @@ class CampaignTracker:
         if campaign.positions < 1:
             logger.error("At least one position is required")
             raise HTTPException(status_code=400, detail="At least one position is required")
-        # Validate client_id exists
+        if campaign.minExperience > campaign.maxExperience:
+            logger.error("Minimum experience cannot be greater than maximum experience")
+            raise HTTPException(status_code=400, detail="Minimum experience cannot be greater than maximum experience")
         if not self.client_collection.find_one({"_id": campaign.client_id}):
             logger.error(f"Client not found: {campaign.client_id}")
             raise HTTPException(status_code=404, detail="Client not found")
-        # Validate campaign_id exists
         if not self.campaign_manager_collection.find_one({"_id": campaign.campaign_id}):
             logger.error(f"Campaign not found: {campaign.campaign_id}")
             raise HTTPException(status_code=404, detail="Campaign not found")
-        # Validate talentAcquisitionTeam emails
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         for member in campaign.talentAcquisitionTeam:
             if not re.match(email_regex, member.email):
                 logger.error(f"Invalid email for team member: {member.email}")
                 raise HTTPException(status_code=400, detail=f"Invalid email format for team member: {member.email}")
 
-        # Fetch user details for created_by
         user = self.users_collection.find_one(
             {"user_id": campaign.created_by},
             {"user_id": 1, "display_name": 1}
@@ -155,7 +165,6 @@ class CampaignTracker:
         created_by_name = user["display_name"]
         logger.info(f"Retrieved display_name: {created_by_name} for user_id: {campaign.created_by}")
 
-        # Create job data
         campaign_id = str(uuid4())
         campaign_data = {
             "_id": campaign_id,
@@ -169,7 +178,8 @@ class CampaignTracker:
             "candidatesHired": 0,
             "currentRound": "Screening",
             "description": campaign.description,
-            "experienceLevel": campaign.experienceLevel,
+            "minExperience": campaign.minExperience,
+            "maxExperience": campaign.maxExperience,
             "jobType": campaign.jobType,
             "client_id": campaign.client_id,
             "campaign_id": campaign.campaign_id,
@@ -179,7 +189,6 @@ class CampaignTracker:
             "created_at": datetime.utcnow()
         }
 
-        # Insert job into collection
         result = self.campaign_collection.insert_one(campaign_data)
         if not result.inserted_id:
             logger.error("Failed to create job")
@@ -198,7 +207,8 @@ class CampaignTracker:
             candidatesHired=0,
             currentRound="Screening",
             description=campaign.description,
-            experienceLevel=campaign.experienceLevel,
+            minExperience=campaign.minExperience,
+            maxExperience=campaign.maxExperience,
             jobType=campaign.jobType,
             client_id=campaign.client_id,
             campaign_id=campaign.campaign_id,
@@ -208,19 +218,147 @@ class CampaignTracker:
             endDate=None,
             Interview=[]
         )
+    
 
+
+    async def update_campaign_details(self, campaign_id: str, details: CampaignDetailsUpdate) -> CampaignResponse:
+        logger.info(f"Updating campaign details for campaign_id: {campaign_id}")
+
+        # Validate campaign existence
+        campaign = self.campaign_collection.find_one({"_id": campaign_id})
+        if not campaign:
+            logger.error(f"Campaign not found: {campaign_id}")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        # Validate input fields
+        if not details.jobTitle.strip():
+            logger.error("Job Title is required")
+            raise HTTPException(status_code=400, detail="Job Title is required")
+        if not details.description.strip():
+            logger.error("Description is required")
+            raise HTTPException(status_code=400, detail="Description is required")
+        if not details.department.strip():
+            logger.error("Department is required")
+            raise HTTPException(status_code=400, detail="Department is required")
+        if not details.location.strip():
+            logger.error("Location is required")
+            raise HTTPException(status_code=400, detail="Location is required")
+        if details.positions < 1:
+            logger.error("At least one position is required")
+            raise HTTPException(status_code=400, detail="At least one position is required")
+
+        # Update campaign details
+        update_data = {
+            "jobTitle": details.jobTitle,
+            "description": details.description,
+            "department": details.department,
+            "location": details.location,
+            "jobType": details.jobType,
+            "positions": details.positions,
+            "updated_at": datetime.utcnow()
+        }
+        result = self.campaign_collection.update_one(
+            {"_id": campaign_id},
+            {"$set": update_data}
+        )
+
+        if result.modified_count == 0:
+            logger.error(f"Failed to update campaign details for campaign_id: {campaign_id}")
+            raise HTTPException(status_code=500, detail="Failed to update campaign details")
+
+        # Fetch updated campaign
+        updated_campaign = self.campaign_collection.find_one({"_id": campaign_id})
+        logger.info(f"Campaign details updated successfully for campaign_id: {campaign_id}")
+
+        return CampaignResponse(
+            id=str(updated_campaign["_id"]),
+            jobTitle=updated_campaign["jobTitle"],
+            department=updated_campaign["department"],
+            positions=updated_campaign["positions"],
+            status=updated_campaign["status"],
+            startDate=updated_campaign["startDate"],
+            location=updated_campaign["location"],
+            candidatesApplied=updated_campaign["candidatesApplied"],
+            candidatesHired=updated_campaign["candidatesHired"],
+            currentRound=updated_campaign["currentRound"],
+            description=updated_campaign["description"],
+            minExperience=updated_campaign["minExperience"],
+            maxExperience=updated_campaign["maxExperience"],
+            jobType=updated_campaign["jobType"],
+            client_id=updated_campaign["client_id"],
+            campaign_id=updated_campaign["campaign_id"],
+            created_by=updated_campaign["created_by"],
+            created_by_name=updated_campaign["created_by_name"],
+            talentAcquisitionTeam=updated_campaign["talentAcquisitionTeam"],
+            endDate=updated_campaign.get("endDate"),
+            Interview=self._convert_objectid_to_str(updated_campaign.get("Interview", []))
+        )
+    async def update_campaign_team(self, campaign_id: str, talentAcquisitionTeam: List[TalentAcquisitionTeamMember]) -> CampaignResponse:
+        logger.info(f"Updating talent acquisition team for campaign_id: {campaign_id}")
+
+        # Validate campaign existence
+        campaign = self.campaign_collection.find_one({"_id": campaign_id})
+        if not campaign:
+            logger.error(f"Campaign not found: {campaign_id}")
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        # Validate email formats
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        for member in talentAcquisitionTeam:
+            if not re.match(email_regex, member.email):
+                logger.error(f"Invalid email for team member: {member.email}")
+                raise HTTPException(status_code=400, detail=f"Invalid email format for team member: {member.email}")
+
+        # Update the talent acquisition team
+        update_data = {
+            "talentAcquisitionTeam": [member.dict() for member in talentAcquisitionTeam],
+            "updated_at": datetime.utcnow()
+        }
+        result = self.campaign_collection.update_one(
+            {"_id": campaign_id},
+            {"$set": update_data}
+        )
+
+        if result.modified_count == 0:
+            logger.error(f"Failed to update talent acquisition team for campaign_id: {campaign_id}")
+            raise HTTPException(status_code=500, detail="Failed to update talent acquisition team")
+
+        # Fetch updated campaign
+        updated_campaign = self.campaign_collection.find_one({"_id": campaign_id})
+        logger.info(f"Talent acquisition team updated successfully for campaign_id: {campaign_id}")
+
+        return CampaignResponse(
+            id=str(updated_campaign["_id"]),
+            jobTitle=updated_campaign["jobTitle"],
+            department=updated_campaign["department"],
+            positions=updated_campaign["positions"],
+            status=updated_campaign["status"],
+            startDate=updated_campaign["startDate"],
+            location=updated_campaign["location"],
+            candidatesApplied=updated_campaign["candidatesApplied"],
+            candidatesHired=updated_campaign["candidatesHired"],
+            currentRound=updated_campaign["currentRound"],
+            description=updated_campaign["description"],
+            minExperience=updated_campaign["minExperience"],
+            maxExperience=updated_campaign["maxExperience"],
+            jobType=updated_campaign["jobType"],
+            client_id=updated_campaign["client_id"],
+            campaign_id=updated_campaign["campaign_id"],
+            created_by=updated_campaign["created_by"],
+            created_by_name=updated_campaign["created_by_name"],
+            talentAcquisitionTeam=talentAcquisitionTeam,
+            endDate=updated_campaign.get("endDate"),
+            Interview=self._convert_objectid_to_str(updated_campaign.get("Interview", []))
+        )
     async def get_all_campaigns(self, client_id: str, campaign_id: Optional[str] = None) -> List[CampaignResponse]:
-        # Validate client_id exists
         if not self.client_collection.find_one({"_id": client_id}):
             logger.warning(f"Client not found for client_id: {client_id}")
             raise HTTPException(status_code=404, detail="Client not found")
 
-        # Validate campaign_id if provided
         if campaign_id and not self.campaign_manager_collection.find_one({"_id": campaign_id}):
             logger.warning(f"Manager campaign not found for campaign_id: {campaign_id}")
-            return []  # Return empty list if campaign_id is invalid
+            return []
 
-        # Build query to filter by client_id and optionally campaign_id
         query = {"client_id": client_id}
         if campaign_id:
             query["campaign_id"] = campaign_id
@@ -230,12 +368,11 @@ class CampaignTracker:
 
         if not campaigns:
             logger.info(f"No jobs found for client_id: {client_id}, campaign_id: {campaign_id}")
-            return []  # Return empty list for no jobs found
+            return []
 
         result = []
         for campaign in campaigns:
             try:
-                # Convert campaign_id to string to handle ObjectId or missing cases
                 campaign["campaign_id"] = self._convert_objectid_to_str(campaign.get("campaign_id", ""))
                 result.append(
                     CampaignResponse(
@@ -250,7 +387,8 @@ class CampaignTracker:
                         candidatesHired=campaign["candidatesHired"],
                         currentRound=campaign["currentRound"],
                         description=campaign["description"],
-                        experienceLevel=campaign["experienceLevel"],
+                        minExperience=campaign["minExperience"],
+                        maxExperience=campaign["maxExperience"],
                         jobType=campaign["jobType"],
                         client_id=campaign["client_id"],
                         campaign_id=campaign["campaign_id"],
@@ -263,11 +401,10 @@ class CampaignTracker:
                 )
             except Exception as e:
                 logger.error(f"Error processing campaign {campaign.get('_id')}: {str(e)}")
-                continue  # Skip invalid campaigns to avoid failing the entire request
+                continue
 
         logger.info(f"Successfully processed {len(result)} campaigns for client_id: {client_id}, campaign_id: {campaign_id}")
         return result
-
 
     async def get_campaign(self, campaign_id: str) -> CampaignResponse:
         campaign = self.campaign_collection.find_one({"_id": campaign_id})
@@ -287,7 +424,8 @@ class CampaignTracker:
             candidatesHired=campaign["candidatesHired"],
             currentRound=campaign["currentRound"],
             description=campaign["description"],
-            experienceLevel=campaign["experienceLevel"],
+            minExperience=campaign["minExperience"],
+            maxExperience=campaign["maxExperience"],
             jobType=campaign["jobType"],
             client_id=campaign["client_id"],
             campaign_id=campaign["campaign_id"],
@@ -295,8 +433,10 @@ class CampaignTracker:
             created_by_name=campaign["created_by_name"],
             talentAcquisitionTeam=campaign["talentAcquisitionTeam"],
             endDate=campaign.get("endDate"),
-            Interview=self._convert_objectid_to_str(campaign.get("Interview", []))
+            Interview=self._convert_objectid_to_str(campaign.get("Interview", [])),
+            Interview_Round=self._convert_objectid_to_str(campaign.get("Interview Round", []))  # Include Interview Round
         )
+# this is class is for creating a campaign , managing campaigns 
 
 class CampaignManager:
     def __init__(self):
@@ -363,20 +503,45 @@ class CampaignManager:
         )
 
     async def get_all_manager_campaigns(self, client_id: Optional[str] = None) -> List[ManagerCampaignResponse]:
+        logger.info(f"Fetching campaigns with client_id: {client_id}")
         query = {"client_id": client_id} if client_id else {}
-        campaigns = list(self.campaign_manager_collection.find(query))
-        return [
-            ManagerCampaignResponse(
-                id=str(campaign["_id"]),
-                title=campaign["title"],
-                description=campaign["description"],
-                contactPerson=campaign["contactPerson"],
-                contactNumber=campaign["contactNumber"],
-                location=campaign["location"],
-                startDate=campaign["startDate"],
-                client_id=campaign["client_id"]
-            ) for campaign in campaigns
-        ]
+        try:
+            campaigns = list(self.campaign_manager_collection.find(query))
+            logger.info(f"Retrieved {len(campaigns)} campaigns from campaign_manager collection")
+            if not campaigns:
+                logger.warning("No campaigns found for the given query")
+                return []
+
+            result = []
+            for campaign in campaigns:
+                campaign_id = str(campaign["_id"])
+                logger.debug(f"Processing campaign ID: {campaign_id}, client_id: {campaign['client_id']}")
+                # Fetch client data to get logoPath
+                client = self.client_collection.find_one({"_id": campaign["client_id"]})
+                if client:
+                    logo_path = client.get("logoPath")
+                    logger.debug(f"Client found: {client['companyName']}, logoPath: {logo_path}")
+                else:
+                    logo_path = None
+                    logger.warning(f"No client found for client_id: {campaign['client_id']}")
+                result.append(
+                    ManagerCampaignResponse(
+                        id=campaign_id,
+                        title=campaign["title"],
+                        description=campaign["description"],
+                        contactPerson=campaign["contactPerson"],
+                        contactNumber=campaign["contactNumber"],
+                        location=campaign["location"],
+                        startDate=campaign["startDate"],
+                        client_id=str(campaign["client_id"]),
+                        logoPath=logo_path
+                    )
+                )
+            logger.info(f"Successfully processed {len(result)} campaigns with logo paths")
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching campaigns: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to fetch campaigns: {str(e)}")
 
     async def get_manager_campaign(self, campaign_id: str) -> ManagerCampaignResponse:
         campaign = self.campaign_manager_collection.find_one({"_id": campaign_id})
@@ -394,7 +559,7 @@ class CampaignManager:
             startDate=campaign["startDate"],
             client_id=campaign["client_id"]
         )
-
+# this class is for creating a client 
 class ClientTracker:
     def __init__(self):
         self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")

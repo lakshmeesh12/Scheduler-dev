@@ -1,7 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
+import hashlib
 import os
 from collections import defaultdict
 import re
+import sys
 from typing import Dict, List, Optional
 import asyncio
 import aiofiles
@@ -13,8 +15,13 @@ from pathlib import Path
 from uuid import uuid4
 import logging
 from typing import List, Dict, Any
+import concurrent
 from fastapi import FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
+
+from utils.chatgpt import run_chatgpt
+from utils.helper import compute_duration
+from utils.prompt_templates.chunking_template import ChunkingPromptTemplate
 
 
 class ResumeProcessor:
@@ -74,7 +81,7 @@ class ResumeProcessor:
             return {"success": True, "path": file_path}
         
         except Exception as e:
-            logger.error(f"Error saving file {file.filename}: {str(e)}")
+            print(f"Error saving file {file.filename}: {str(e)}")
             return {"success": False, "error": f"Failed to save file: {str(e)}"}
     
     async def read_file_async(self, file_path: str) -> Dict[str, Any]:
@@ -125,7 +132,7 @@ class ResumeProcessor:
                 if os.path.exists(file_path):
                     os.remove(file_path)
             except Exception as e:
-                logger.warning(f"Failed to clean up file {file_path}: {str(e)}")
+                print(f"Failed to clean up file {file_path}: {str(e)}")
 
 class JobRequirements(BaseModel):
     """Model for job requirements"""
@@ -245,7 +252,6 @@ class JDProcessor:
         
         if expired_jds:
             print(f"Cleaned up {len(expired_jds)} expired JDs")
-
 
 class GenericSkillMatcher:
     def __init__(self, priority_weights: Dict[str, float] = None, category_weights: Dict[str, float] = None):
@@ -514,12 +520,10 @@ class GenericSkillMatcher:
             print(err)
             return {}
 
-
 class SkillPriority(BaseModel):
     high_priority_skills: Optional[List[str]] = []
     medium_priority_skills: Optional[List[str]] = []
     category_weights: Optional[Dict[str, float]] = {}
-
 
 def extract_skill_names(skills_dict: Dict) -> List[str]:
     """Extract all skill names from nested skills dictionary"""
@@ -538,7 +542,7 @@ class SkillMatchDetails(BaseModel):
 
 class AggregatedScore(BaseModel):
     resume_name: str
-    resume_id: str
+    profile_id: str
     aggregated_score: float
     score_breakdown: Dict[str, float]
     primary_vs_primary: SkillMatchDetails
@@ -552,6 +556,63 @@ class MatchingResponse(BaseModel):
     matching_results: List[AggregatedScore]
     timestamp: datetime
     execution_time_ms: float
+
+executor = concurrent.futures.ThreadPoolExecutor()
+
+def process_response(content: bytes, response_text: str, file_path: str) -> Dict:
+    cleaned = response_text.replace("```", "").lstrip("python\n").strip()
+    parsed_response = json.loads(cleaned)
+    print("data loaded!")
+
+    total_exp = 0
+    for rec in parsed_response.get('work_history', []):
+        start = rec.get('start_date')
+        end = rec.get('end_date') or "Aug 2025"
+        if end.lower() == "present":
+            end = "Aug 2025"
+        duration = compute_duration(start, end)
+        total_exp += duration
+    parsed_response['total_experience'] = total_exp
+    parsed_response['profile_id'] = str(uuid4())
+    parsed_response['file_name'] = file_path
+    parsed_response['file_hash'] = hashlib.sha256(content.encode()).hexdigest()
+    parsed_response['processed_at'] = datetime.now(timezone.utc)
+    parsed_response['status'] = "COMPLETED"
+    parsed_response['active'] = True
+
+    return parsed_response
+
+# Main async processor per file
+async def process_file(file_path: str, content: bytes, chunked: list):
+    try:
+        prompt = ChunkingPromptTemplate(content)
+        response = await run_chatgpt(prompt.prompt, "You are expert in extracting structured content from doctags text", 0.4)
+
+        if not response:
+            print(f"Skipping file due to empty response.")
+            return
+
+        # Run CPU-bound processing in a thread
+        parsed = await asyncio.get_event_loop().run_in_executor(executor, process_response, content, response, file_path)
+
+        chunked.append(parsed)
+
+    except Exception as e:
+        print(f"Error processing {file_path}: {e} /")
+
+# Entrypoint for all files
+async def process_all_files(successful_files: Dict[str, bytes]):
+    try:
+        chunked = []
+        tasks = [process_file(fp, content, chunked) for fp, content in successful_files.items()]
+        await asyncio.gather(*tasks)
+        return chunked
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        print(message)
+        return chunked
 
 def get_skill_match_details(resume_skills: Dict, job_skills: Dict, matcher: GenericSkillMatcher) -> SkillMatchDetails:
     """Get detailed skill matching information including matched and missing skills"""
