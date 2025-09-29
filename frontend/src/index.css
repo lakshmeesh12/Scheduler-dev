@@ -167,3 +167,12 @@
     @apply relative before:absolute before:inset-0 before:rounded-full before:border-2 before:border-blue-400 before:animate-ping;
   }
 }
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 2s linear infinite;
+}

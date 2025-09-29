@@ -5,8 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { PanelSelection } from "./PanelSelection";
 import { InterviewDetailsForm } from "./InterviewDetailsForm";
 import { AvailabilityCalendar } from "./AvailabilityCalendar";
@@ -69,17 +67,13 @@ export const InterviewRound = ({
 }: InterviewRoundProps) => {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   const [detailsCollapsed, setDetailsCollapsed] = useState(false);
-  const [schedulingMethod, setSchedulingMethod] = useState<'direct' | 'candidate_choice'>(round.schedulingOption || 'direct');
-  const [overrideWorkingHours, setOverrideWorkingHours] = useState(false);
   const [candidateOptions, setCandidateOptions] = useState<TimeSlot[]>([]);
   const [error, setError] = useState('');
 
-  // Debug: Log candidateInfo
   useEffect(() => {
     console.log("InterviewRound: Received candidateInfo:", candidateInfo);
   }, [candidateInfo]);
 
-  // Function to save round to backend
   const saveRoundToBackend = async (roundData: InterviewRoundData) => {
     console.log("InterviewRound: Attempting to save round to backend:", {
       ...roundData,
@@ -87,7 +81,6 @@ export const InterviewRound = ({
       sessionId: localStorage.getItem("session_id"),
     });
     try {
-      // Validate round data
       if (!candidateInfo.profile_id) {
         throw new Error("Candidate profile_id is missing");
       }
@@ -240,61 +233,24 @@ export const InterviewRound = ({
         )}
         {/* Availability & Scheduling */}
         {hasCompleteDetails && round.status !== 'scheduled' && round.status !== 'completed' && (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-primary" />
               Schedule Interview
             </h3>
-            <div className="space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="flex items-center gap-2">
-                  <Label className="text-sm">Scheduling Method</Label>
-                  <div className="flex rounded-md border bg-background">
-                    <Button
-                      type="button"
-                      variant={schedulingMethod === 'direct' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        console.log("InterviewRound: Setting scheduling method to direct");
-                        setSchedulingMethod('direct');
-                        onUpdateRound(round.id, { schedulingOption: 'direct' });
-                      }}
-                    >
-                      Direct invite
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={schedulingMethod === 'candidate_choice' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => {
-                        console.log("InterviewRound: Setting scheduling method to candidate_choice");
-                        setSchedulingMethod('candidate_choice');
-                        onUpdateRound(round.id, { schedulingOption: 'candidate_choice' });
-                      }}
-                    >
-                      Candidate preference
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch id={`override-${round.id}`} checked={overrideWorkingHours} onCheckedChange={setOverrideWorkingHours} />
-                  <Label htmlFor={`override-${round.id}`} className="text-sm">Override time slots</Label>
-                </div>
-              </div>
-              <AvailabilityCalendar
-                panelMembers={round.panel}
-                selectedDate={round.details?.date}
-                preferredTimezone={round.details?.preferred_timezone || 'UTC'}
-                candidate={candidateInfo}
-                interviewDetails={round.details}
-                onTimeSlotSelect={(slot) => {
-                  console.log("InterviewRound: Time slot selected:", slot);
-                  onUpdateRound(round.id, { selectedTimeSlot: slot, status: 'scheduled' });
-                  setCandidateOptions([slot]);
-                }}
-                roundStatus={round.status}
-              />
-            </div>
+            <AvailabilityCalendar
+              panelMembers={round.panel}
+              selectedDate={round.details?.date}
+              preferredTimezone={round.details?.preferred_timezone || 'UTC'}
+              candidate={candidateInfo}
+              interviewDetails={round.details}
+              onTimeSlotSelect={(slot) => {
+                console.log("InterviewRound: Time slot selected:", slot);
+                onUpdateRound(round.id, { selectedTimeSlot: slot, status: 'scheduled' });
+                setCandidateOptions([slot]);
+              }}
+              roundStatus={round.status}
+            />
           </div>
         )}
         {/* Candidate Notification */}
@@ -308,7 +264,7 @@ export const InterviewRound = ({
               candidate={candidateInfo}
               timeSlots={candidateOptions.length > 0 ? candidateOptions : round.selectedTimeSlot ? [round.selectedTimeSlot] : []}
               interviewDetails={round.details}
-              mode={schedulingMethod === 'direct' ? 'single' : 'multiple'}
+              mode={'single'}
               onNotificationSent={() => {
                 console.log("InterviewRound: Notification sent, updating round status to completed");
                 const updatedRound = { ...round, status: 'completed' };

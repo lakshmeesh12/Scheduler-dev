@@ -111,7 +111,7 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
       if (context === "new") {
         const userIds = selectedMembers.map((m) => m.user_id);
         const createdBy = sessionStorage.getItem("user_id");
-        console.log("user_id from localStorage:", createdBy); // Debug log
+        console.log("user_id from localStorage:", createdBy);
         if (!createdBy) {
           console.log("No user_id found, redirecting to login");
           toast({
@@ -119,12 +119,11 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
             title: "Error",
             description: "User not logged in. Redirecting to login...",
           });
-          navigate("/"); // Redirect to root (login page)
+          navigate("/");
           return;
         }
         const sessionId = await savePanelSelection(userIds, createdBy);
 
-        // Store session ID in localStorage
         localStorage.setItem("session_id", sessionId);
 
         toast({
@@ -135,7 +134,7 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
 
       onSave(selectedMembers);
     } catch (err) {
-      console.error("Error saving panel selection:", err); // Debug log
+      console.error("Error saving panel selection:", err);
       toast({
         variant: "destructive",
         title: "Error",
@@ -153,33 +152,33 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
         <Button
           variant={selectionMode === "role" ? "default" : "outline"}
           onClick={() => setSelectionMode("role")}
-          className="flex-1"
+          className="flex-1 text-sm h-8"
         >
-          <Users className="w-4 h-4 mr-2" />
+          <Users className="w-3 h-3 mr-1" />
           Select by Role
         </Button>
         <Button
           variant={selectionMode === "manual" ? "default" : "outline"}
           onClick={() => setSelectionMode("manual")}
-          className="flex-1"
+          className="flex-1 text-sm h-8"
         >
-          <UserPlus className="w-4 h-4 mr-2" />
+          <UserPlus className="w-3 h-3 mr-1" />
           Manual Selection
         </Button>
       </div>
 
-      {error && <p className="text-red-600">{error}</p>}
-      {loading && <p className="text-gray-500">Loading...</p>}
+      {error && <p className="text-red-600 text-xs">{error}</p>}
+      {loading && <p className="text-gray-500 text-xs">Loading...</p>}
 
       {/* Role-based Selection */}
       {selectionMode === "role" && !loading && (
         <Card className="glass border-blue-200">
           <CardHeader>
-            <CardTitle className="text-lg">Select Panel by Job Role</CardTitle>
+            <CardTitle className="text-sm font-medium text-blue-700">Select Panel by Job Role</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select onValueChange={handleRoleSelection}>
-              <SelectTrigger>
+              <SelectTrigger className="text-sm h-8">
                 <SelectValue placeholder="Choose a job role" />
               </SelectTrigger>
               <SelectContent>
@@ -192,21 +191,21 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
 
             {selectedRole && (
               <div className="mt-4">
-                <h4 className="font-medium mb-3">Assigned Panel Members:</h4>
+                <h4 className="font-medium text-sm text-blue-700 mb-3">Assigned Panel Members:</h4>
                 <div className="grid gap-3">
                   {selectedMembers.map((member) => (
                     <div
                       key={member.user_id}
                       className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200"
                     >
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3">
                         {getInitials(getDisplayName(member))}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-gray-800">{getDisplayName(member)}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                        <p className="font-medium text-sm text-gray-800">{getDisplayName(member)}</p>
+                        <p className="text-xs text-muted-foreground">{member.email}</p>
                       </div>
-                      <Badge variant="secondary">{member.job_title || "Unknown Role"}</Badge>
+                      <Badge variant="secondary" className="text-xs">{member.job_title || "Unknown Role"}</Badge>
                     </div>
                   ))}
                 </div>
@@ -220,16 +219,16 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
       {selectionMode === "manual" && !loading && (
         <Card className="glass border-purple-200">
           <CardHeader>
-            <CardTitle className="text-lg">Manual Panel Selection</CardTitle>
+            <CardTitle className="text-sm font-medium text-purple-700">Manual Panel Selection</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
               <Input
                 placeholder="Search panel members by name, email, or role..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-10 text-sm h-8"
               />
             </div>
 
@@ -247,15 +246,15 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
                     onClick={() => handleMemberToggle(member)}
                   >
                     <Checkbox checked={isSelected} onChange={() => handleMemberToggle(member)} className="mr-3" />
-                    <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium mr-3">
                       {getInitials(getDisplayName(member))}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-800">{getDisplayName(member)}</p>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <p className="font-medium text-sm text-gray-800">{getDisplayName(member)}</p>
+                      <p className="text-xs text-muted-foreground">{member.email}</p>
                     </div>
-                    <Badge variant="outline">{member.job_title || "Unknown Role"}</Badge>
-                    {isSelected && <Check className="w-5 h-5 text-purple-600 ml-2" />}
+                    <Badge variant="outline" className="text-xs">{member.job_title || "Unknown Role"}</Badge>
+                    {isSelected && <Check className="w-4 h-4 text-purple-600 ml-2" />}
                   </div>
                 );
               })}
@@ -268,7 +267,7 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
       {selectedMembers.length > 0 && (
         <Card className="glass border-green-200">
           <CardHeader>
-            <CardTitle className="text-lg text-green-700">
+            <CardTitle className="text-sm font-medium text-green-700">
               Selected Panel ({selectedMembers.length} members)
             </CardTitle>
           </CardHeader>
@@ -286,15 +285,16 @@ export const PanelSelection = ({ onSave, initialPanel = [], context = "new" }: P
                 </div>
               ))}
             </div>
-
-            <Button
-              onClick={handleSave}
-              className="w-full bg-green-600 hover:bg-green-700"
-              disabled={loading || selectedMembers.length === 0}
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Save Panel Selection
-            </Button>
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSave}
+                className="bg-green-600 hover:bg-green-700 text-sm py-1 px-3 h-8"
+                disabled={loading || selectedMembers.length === 0}
+              >
+                <Check className="w-3 h-3 mr-1" />
+                Save
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

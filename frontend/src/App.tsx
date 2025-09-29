@@ -24,7 +24,10 @@ import ClientDashboard from "./pages/ClientDashboard";
 import CampaignDashboard from "./pages/CampaignDashboard";
 import CampaignManager from "./pages/CampaignManager";
 import CandidateSearch from "./pages/CandidateSearch";
-import QChatPage from "./pages/QChatPage"; // Added import
+import CandidateSearchResults from "./pages/CandidateSearchResults";
+import QChatPage from "./pages/QChatPage";
+import AddEmployee from "./pages/AddEmployee";
+import Drives from "./pages/Drives";
 
 const queryClient = new QueryClient();
 
@@ -34,27 +37,26 @@ const AuthHandler = ({ children }: { children: JSX.Element }) => {
   const [isAuthProcessed, setIsAuthProcessed] = useState(false);
 
   useEffect(() => {
-    console.log("AuthHandler - Current URL:", window.location.href); // Debug log
-    console.log("AuthHandler - Location:", location); // Debug log
+    console.log("AuthHandler - Current URL:", window.location.href);
+    console.log("AuthHandler - Location:", location);
     const params = new URLSearchParams(location.search);
     const userId = params.get("user_id");
-    console.log("AuthHandler - user_id from URL:", userId); // Debug log
+    console.log("AuthHandler - user_id from URL:", userId);
     if (userId) {
       localStorage.setItem("user_id", userId);
-      console.log("AuthHandler - Stored user_id in localStorage:", userId); // Debug log
-      // Remove user_id from URL
+      console.log("AuthHandler - Stored user_id in localStorage:", userId);
       window.history.replaceState({}, "", location.pathname);
-      console.log("AuthHandler - Cleaned URL:", window.location.href); // Debug log
+      console.log("AuthHandler - Cleaned URL:", window.location.href);
     } else {
-      console.log("AuthHandler - No user_id in URL"); // Debug log
+      console.log("AuthHandler - No user_id in URL");
     }
-    console.log("AuthHandler - Current localStorage user_id:", localStorage.getItem("user_id")); // Debug log
+    console.log("AuthHandler - Current localStorage user_id:", localStorage.getItem("user_id"));
     setIsAuthProcessed(true);
   }, [location]);
 
   if (!isAuthProcessed) {
-    console.log("AuthHandler - Waiting for auth processing..."); // Debug log
-    return null; // Delay rendering until auth is processed
+    console.log("AuthHandler - Waiting for auth processing...");
+    return null;
   }
 
   return children;
@@ -62,7 +64,7 @@ const AuthHandler = ({ children }: { children: JSX.Element }) => {
 
 // ProtectedRoute component to check for user_id
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const userId = sessionStorage.getItem("user_id"); // Use sessionStorage
+  const userId = sessionStorage.getItem("user_id");
   console.log("ProtectedRoute - user_id:", userId);
   if (!userId) {
     console.log("ProtectedRoute - No user_id, redirecting to /");
@@ -84,7 +86,7 @@ const extractUserId = () => {
   const params = new URLSearchParams(window.location.search);
   const userId = params.get("user_id");
   if (userId) {
-    sessionStorage.setItem("user_id", userId); // Use sessionStorage
+    sessionStorage.setItem("user_id", userId);
     console.log("extractUserId - Stored user_id in sessionStorage:", userId);
     window.history.replaceState({}, "", window.location.pathname);
     console.log("extractUserId - Cleaned URL:", window.location.href);
@@ -104,7 +106,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => (
 );
 
 const App = () => {
-  extractUserId(); // Run synchronously before rendering
+  extractUserId();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -148,6 +150,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <AppLayout><CandidateSearch /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/candidate-search/:campaignId/results"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><CandidateSearchResults /></AppLayout>
                   </ProtectedRoute>
                 }
               />
@@ -244,13 +254,29 @@ const App = () => {
                 }
               />
               <Route
+                path="/add-employee/:clientId"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><AddEmployee /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/qchat"
                 element={
                   <ProtectedRoute>
                     <AppLayout><QChatPage /></AppLayout>
                   </ProtectedRoute>
                 }
-              /> {/* Added QChat route */}
+              />
+              <Route
+                path="/drives"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Drives /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthHandler>

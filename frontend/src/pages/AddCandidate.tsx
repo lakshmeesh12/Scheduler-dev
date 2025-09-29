@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { uploadResumes, importExcel } from "@/api";
+import { uploadResumes, importExcel, importExceldata } from "@/api";
 import { Progress } from "@/components/ui/progress";
 
 type AddMode = "choice" | "manual" | "resume" | "excel";
@@ -30,7 +30,10 @@ interface CandidateForm {
 }
 
 const AddCandidate = () => {
-  const [mode, setMode] = useState<AddMode>("choice");
+  const location = useLocation();
+  const campaignId = location.state?.campaign?.campaignId;
+  const { state } = useLocation();
+  const [mode, setMode] = useState<AddMode>(state?.mode || "choice");
   const [isLoading, setIsLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -91,7 +94,6 @@ const AddCandidate = () => {
         setUploadedFiles([]);
         setUploadProgress(0);
         setCurrentFile("");
-        // Do not navigate; stay on the resume upload page
       } else if (response.errors) {
         toast({
           title: "Some files failed validation",
@@ -113,7 +115,7 @@ const AddCandidate = () => {
   };
 
   const handleExcelUpload = async (file: File) => {
-    if (!file.type.includes("spreadsheet") && !file.type.includes("csv")) {
+    if (!file.name.endsWith('.xls') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
       toast({
         title: "Invalid file type",
         description: "Please upload XLS, XLSX, or CSV files only.",
@@ -122,29 +124,38 @@ const AddCandidate = () => {
       return;
     }
 
+    if (!campaignId) {
+      toast({
+        title: "Error",
+        description: "Campaign ID is missing. Please ensure you're accessing this page from a valid campaign.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await importExcel(file);
+      const response = await importExceldata(campaignId, file);
       console.log("AddCandidate: Excel API response:", response);
 
-      if (response.success === true || response.status === "success" || response.status === "processing") {
+      if (response.message && response.inserted_count >= 0) {
         toast({
-          title: "Candidates added successfully",
-          description: response.message || "The Excel file has been processed successfully.",
+          title: "Candidates imported successfully",
+          description: `${response.inserted_count} candidates were imported for Campaign ID: ${response.campaign_id}.`,
           className: "bg-green-600 text-white"
         });
-        navigate("/add-candidate");
+        navigate(`/candidate-search/${campaignId}`);
       } else {
         toast({
-          title: "Error uploading Excel file",
-          description: response.error?.details || response.error?.message || "Failed to process Excel file.",
+          title: "Error importing Excel file",
+          description: response.message || "Failed to process Excel file.",
           variant: "destructive"
         });
       }
     } catch (err) {
       toast({
-        title: "Error uploading Excel file",
+        title: "Error importing Excel file",
         description: err instanceof Error ? err.message : "Failed to process Excel file.",
         variant: "destructive"
       });
@@ -178,6 +189,32 @@ const AddCandidate = () => {
     
     const files = e.dataTransfer.files;
     handleFileUpload(files);
+  };
+
+  const downloadTemplate = () => {
+    const headers = [
+      "S.no",
+      "Candidate Name",
+      "Mobile Number",
+      "Email Id",
+      "Total Experience",
+      "Company",
+      "CTC",
+      "ECTC",
+      "Offer in Hand",
+      "Notice",
+      "Current Location",
+      "Preferred Location",
+      "Availability for interview"
+    ];
+    const csvContent = headers.join(",") + "\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "candidate_import_template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const renderChoiceScreen = () => (
@@ -410,7 +447,7 @@ const AddCandidate = () => {
             </div>
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg relative">
             <h4 className="font-semibold text-blue-800 mb-2">Template Columns Required:</h4>
             <div className="grid grid-cols-2 gap-2 text-sm text-blue-700">
               <div>• S.no</div>
@@ -426,6 +463,14 @@ const AddCandidate = () => {
               <div>• Current Location</div>
               <div>• Preferred Location</div>
               <div>• Availability for interview</div>
+            </div>
+            <div className="absolute top-4 right-4">
+              <button
+                onClick={downloadTemplate}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Download Template
+              </button>
             </div>
           </div>
         </CardContent>
@@ -654,7 +699,7 @@ const AddCandidate = () => {
       <header className="glass border-b border-white/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-3 hover:scale-105 transition-transform duration-300">
+            <Link to={`/candidate-search/${campaignId}`} className="flex items-center space-x-3 hover:scale-105 transition-transform duration-300">
               <Button variant="ghost" size="sm" className="p-2">
                 <ArrowLeft className="w-5 h-5" />
               </Button>

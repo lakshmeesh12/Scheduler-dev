@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -36,24 +37,24 @@ const Login = () => {
       </div>
 
       <div className="w-full max-w-6xl grid lg:grid-cols-2 gap-8 relative z-10">
-        {/* Left side - Keep exactly the same */}
-        <div className="hidden lg:flex flex-col justify-center space-y-8 px-8">
-          <div className="space-y-6">
+        {/* Left side - Adjusted font sizes */}
+        <div className="hidden lg:flex flex-col justify-center space-y-6 px-8">
+          <div className="space-y-4">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center animate-glow shadow-2xl">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold gradient-text">QHire</h1>
-                <p className="text-lg text-gray-600">Enterprise Candidate Search</p>
+                <h1 className="text-3xl font-bold gradient-text">QHire</h1>
+                <p className="text-sm text-gray-600">Enterprise Candidate Search</p>
               </div>
             </div>
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold text-gray-800">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-800">
                 Welcome to the Future of
                 <span className="gradient-text"> AI-Powered Recruiting</span>
               </h2>
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <p className="text-sm text-gray-600 leading-relaxed">
                 Transform your hiring process with intelligent candidate matching, 
                 natural language search, and automated resume analysis.
               </p>
@@ -64,8 +65,8 @@ const Login = () => {
                   <Brain className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-800">AI-Powered Matching</h3>
-                  <p className="text-sm text-gray-600">Smart algorithms find perfect candidates</p>
+                  <h3 className="text-sm font-semibold text-gray-800">AI-Powered Matching</h3>
+                  <p className="text-xs text-gray-600">Smart algorithms find perfect candidates</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4 p-4 glass-card rounded-xl hover:scale-105 transition-all duration-300">
@@ -73,8 +74,8 @@ const Login = () => {
                   <Search className="w-6 h-6 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-800">Natural Language Search</h3>
-                  <p className="text-sm text-gray-600">Search candidates like you talk</p>
+                  <h3 className="text-sm font-semibold text-gray-800">Natural Language Search</h3>
+                  <p className="text-xs text-gray-600">Search candidates like you talk</p>
                 </div>
               </div>
               <div className="flex items-center space-x-4 p-4 glass-card rounded-xl hover:scale-105 transition-all duration-300">
@@ -82,15 +83,15 @@ const Login = () => {
                   <Target className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-800">Precision Filtering</h3>
-                  <p className="text-sm text-gray-600">Advanced filters for exact matches</p>
+                  <h3 className="text-sm font-semibold text-gray-800">Precision Filtering</h3>
+                  <p className="text-xs text-gray-600">Advanced filters for exact matches</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right side - Microsoft-only login */}
+        {/* Right side - Microsoft-only login with adjusted font sizes */}
         <div className="flex items-center justify-center">
           <Card className="w-full max-w-md glass-card border-0 shadow-2xl animate-scale-in">
             <CardHeader className="text-center space-y-4 pb-6">
@@ -99,7 +100,7 @@ const Login = () => {
                   <Users className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold gradient-text">QHire</h1>
+                  <h1 className="text-lg font-bold gradient-text">QHire</h1>
                 </div>
               </div>
               
@@ -116,8 +117,8 @@ const Login = () => {
               </div>
               
               <div className="space-y-1">
-                <CardTitle className="text-xl font-bold text-gray-800">Welcome Back</CardTitle>
-                <p className="text-sm text-gray-600">Sign in with your Microsoft account to access QHire</p>
+                <CardTitle className="text-lg font-bold text-gray-800">Welcome Back</CardTitle>
+                <p className="text-xs text-gray-600">Sign in with your Microsoft account to access QHire</p>
               </div>
             </CardHeader>
             
@@ -132,7 +133,7 @@ const Login = () => {
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-3">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Connecting to Microsoft...</span>
+                    <span className="text-sm">Connecting to Microsoft...</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center space-x-3">
@@ -142,18 +143,18 @@ const Login = () => {
                       <path fill="white" d="M13 3h9v9h-9V3z"/>
                       <path fill="white" d="M13 13h9v9h-9v-9z"/>
                     </svg>
-                    <span>Continue with Microsoft</span>
+                    <span className="text-sm">Continue with Microsoft</span>
                   </div>
                 )}
               </Button>
 
               {/* Security Features */}
               <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-sm text-gray-600">
+                <div className="flex items-center space-x-3 text-xs text-gray-600">
                   <Shield className="w-4 h-4 text-green-600" />
                   <span>Secured by Microsoft Enterprise Authentication</span>
                 </div>
-                <div className="flex items-center space-x-3 text-sm text-gray-600">
+                <div className="flex items-center space-x-3 text-xs text-gray-600">
                   <Building2 className="w-4 h-4 text-blue-600" />
                   <span>Single Sign-On (SSO) enabled for your organization</span>
                 </div>

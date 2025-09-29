@@ -25,6 +25,7 @@ import {
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
+  { title: "Drives", url: "/drives", icon: Briefcase },
   { title: "Search Candidates", url: "/search", icon: UserPlus },
   { title: "Add Candidate", url: "/add-candidate", icon: UserPlus },
   { title: "Panel Members", url: "/panel-members", icon: Users },

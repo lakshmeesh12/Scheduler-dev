@@ -134,6 +134,47 @@ export const fetchUsers = async (): Promise<User[]> => {
   }
 };
 
+export interface FileUploadResponse {
+  session_id: string;
+  columns: string[];
+}
+
+export interface ColumnDataResponse {
+  data: Array<{ [key: string]: any }>;
+}
+export const uploadFileForColumns = async (file: File): Promise<FileUploadResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<FileUploadResponse>('/upload-file/columns', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to upload file');
+    }
+    throw new Error('Network error while uploading file');
+  }
+};
+
+export const fetchColumnData = async (sessionId: string, columns: string[]): Promise<ColumnDataResponse> => {
+  try {
+    const response = await apiClient.post<ColumnDataResponse>('/fetch-column-data', {
+      session_id: sessionId,
+      columns,
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch column data');
+    }
+    throw new Error('Network error while fetching column data');
+  }
+};
+
 export const savePanelSelection = async (userIds: string[], createdBy: string): Promise<string> => {
   try {
     const response = await apiClient.post<PanelSelectionResponse>('/panel-selection', {
@@ -182,6 +223,44 @@ export const fetchAllAvailableSlots = async (sessionId: string): Promise<Availab
       throw new Error((error.response.data as ApiError).error || 'Failed to fetch all available slots');
     }
     throw new Error('Network error while fetching all available slots');
+  }
+};
+
+
+export interface PanelEventsResponse {
+  users: {user_id: string; display_name: string}[];
+  events: Record<string, {start: string; end: string; subject: string}[]>;
+  common_working: {start: string; end: string} | null;
+  working_day: boolean;
+}
+
+export interface CustomSlotCheckResponse {
+  available: boolean;
+  reason?: string;
+  conflicts?: {user_id: string; display_name: string; conflicts: {subject: string; start: string; end: string}[]}[];
+}
+
+export const fetchPanelEvents = async (sessionId: string): Promise<PanelEventsResponse> => {
+  try {
+    const response = await apiClient.get<PanelEventsResponse>(`/panel-events/${sessionId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch panel events');
+    }
+    throw new Error('Network error while fetching panel events');
+  }
+};
+
+export const checkCustomSlot = async (sessionId: string, start: string, end: string, override: boolean = false): Promise<CustomSlotCheckResponse> => {
+  try {
+    const response = await apiClient.post<CustomSlotCheckResponse>(`/check-custom-slot/${sessionId}`, { start, end }, { params: { override } });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to check custom slot');
+    }
+    throw new Error('Network error while checking custom slot');
   }
 };
 
@@ -509,6 +588,79 @@ const trackEvent = async (sessionId: string): Promise<EventTrackerResponse> => {
   });
 };
 
+interface ScheduleDrivesRequest {
+  drive_details: {
+    clientId: string;
+    title: string;
+    description: string;
+  };
+  slot: {
+    date: string;
+    start_time: string;
+    end_time: string;
+  };
+  mail_template: {
+    subject: string;
+    body: string;
+  };
+  to_emails: string[];
+  cc_emails?: string[];
+  timezone: string;
+  campaign_id?: string | null;
+}
+
+interface ScheduleDrivesResponse {
+  message?: string;
+  event_id?: string;
+  teams_link?: string | null;
+  error?: string;
+}
+
+export const scheduleDrives = async (sessionId: string, request: ScheduleDrivesRequest): Promise<ScheduleDrivesResponse> => {
+  try {
+    console.log("Sending schedule-drives request:", request);
+    const response = await axios.post<ScheduleDrivesResponse>(`${BASE_URL}/schedule-drives/${sessionId}`, request, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    console.log("Schedule-drives response:", response.data);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Schedule-drives API error:", error.response.data);
+      throw new Error((error.response.data as { error: string }).error || 'Failed to schedule drive');
+    }
+    console.error("Schedule-drives network error:", error);
+    throw new Error('Network error while scheduling drive');
+  }
+};
+
+export interface Drive {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  timezone: string;
+  to_emails: string[];
+  cc_emails: string[];
+  event_id: string;
+  campaign_id?: string;
+  created_at: string;
+}
+
+export const fetchDrivesByClient = async (clientId: string): Promise<Drive[]> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/drives/${clientId}`);
+    return response.data;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Failed to fetch drives");
+  }
+};
+
 
 
 interface UploadResumeResponse {
@@ -576,6 +728,25 @@ const uploadResumes = async (
   }
 };
 
+interface Employee {
+  name: string;
+  title: string;
+}
+
+const fetchEmployees = async (): Promise<Employee[]> => {
+  try {
+    const response = await fetchWithToken(`${BASE_URL}/employees`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    return response;
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : 'Failed to fetch employees');
+  }
+};
+
 interface ImportExcelResponse {
   success?: boolean;
   message?: string;
@@ -605,7 +776,7 @@ const importExcel = async (file: File): Promise<ImportExcelResponse> => {
 };
 
 export type { EventTrackerResponse, UploadResumeResponse, ImportExcelResponse };
-export { trackEvent, uploadResumes, importExcel };
+export { trackEvent, uploadResumes, importExcel, fetchEmployees };
 
 interface SchedulerResponse {
   interviews: {
@@ -839,14 +1010,15 @@ export interface TalentAcquisitionTeamMember {
 export interface CampaignCreate {
   jobTitle: string;
   description: string;
-  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  minExperience: number;
+  maxExperience: number;
   positions: number;
-  location: string;
+  location: string | null; // Made optional to match backend
   department: string;
   jobType: "Full-time" | "Part-time" | "Contract";
   startDate: string;
   client_id: string;
-  campaign_id: string; // Add campaign_id
+  campaign_id: string;
   created_by: string;
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
 }
@@ -896,12 +1068,13 @@ export interface HiringCampaign {
   status: "Active" | "Completed" | "On Hold";
   startDate: string;
   endDate?: string;
-  location: string;
+  location: string | null; // Made optional to match backend
   candidatesApplied: number;
   candidatesHired: number;
   currentRound: string;
   description: string;
-  experienceLevel: "Junior" | "Mid-level" | "Senior";
+  minExperience: number;
+  maxExperience: number;
   jobType: "Full-time" | "Part-time" | "Contract";
   client_id: string;
   campaign_id: string;
@@ -909,8 +1082,22 @@ export interface HiringCampaign {
   created_by_name: string;
   talentAcquisitionTeam: TalentAcquisitionTeamMember[];
   Interview?: Interview[];
-  Interview_Round?: InterviewRound[]; // Added Interview_Round
+  Interview_Round?: InterviewRound[];
 }
+
+// Map experienceLevel to minExperience and maxExperience for single campaign creation
+const mapExperienceLevel = (experienceLevel: "Junior" | "Mid-level" | "Senior") => {
+  switch (experienceLevel) {
+    case "Junior":
+      return { minExperience: 0, maxExperience: 2 };
+    case "Mid-level":
+      return { minExperience: 3, maxExperience: 5 };
+    case "Senior":
+      return { minExperience: 6, maxExperience: 10 };
+    default:
+      return { minExperience: 0, maxExperience: 2 };
+  }
+};
 
 export interface InterviewRound {
   id: string;
@@ -979,7 +1166,7 @@ export const fetchAllCampaigns = async (clientId: string, campaignId: string): P
   }
 };
 
-export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'>): Promise<HiringCampaign> => {
+export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by' | 'minExperience' | 'maxExperience'> & { experienceLevel: "Junior" | "Mid-level" | "Senior" }): Promise<HiringCampaign> => {
   try {
     const userId = sessionStorage.getItem('user_id');
     if (!userId) {
@@ -987,8 +1174,13 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
       throw new Error('User not authenticated. Please log in.');
     }
 
+    const { experienceLevel, ...rest } = campaign;
+    const { minExperience, maxExperience } = mapExperienceLevel(experienceLevel);
+
     const payload: CampaignCreate = {
-      ...campaign,
+      ...rest,
+      minExperience,
+      maxExperience,
       created_by: userId,
       talentAcquisitionTeam: campaign.talentAcquisitionTeam.map(({ name, email, role }) => ({
         name,
@@ -996,10 +1188,10 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
         role,
       })),
     };
-    console.log('Sending payload to /api/new-campaign:', JSON.stringify(payload, null, 2)); // Enhanced logging
+    console.log('Sending payload to /api/new-campaign:', JSON.stringify(payload, null, 2));
 
     const response = await apiClient.post<HiringCampaign>('/api/new-campaign', payload);
-    console.log('API response:', response.data);
+    console.log('API response:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('Error in createCampaign:', error);
@@ -1008,6 +1200,57 @@ export const createCampaign = async (campaign: Omit<CampaignCreate, 'created_by'
       throw new Error((error.response.data as ApiError).error || 'Failed to create campaign');
     }
     throw new Error(error instanceof Error ? error.message : 'Network error while creating campaign');
+  }
+};
+
+export const createBulkCampaigns = async (files: File[], client_id: string, campaign_id: string): Promise<HiringCampaign[]> => {
+  try {
+    const userId = sessionStorage.getItem('user_id');
+    if (!userId) {
+      console.error('No user_id found in sessionStorage');
+      throw new Error('User not authenticated. Please log in.');
+    }
+
+    if (!files || files.length === 0) {
+      console.error('No files provided for bulk campaign creation');
+      throw new Error('At least one file is required for bulk campaign creation');
+    }
+
+    if (!client_id || !campaign_id) {
+      console.error('Missing client_id or campaign_id');
+      throw new Error('Client ID and Campaign ID are required');
+    }
+
+    const formData = new FormData();
+    files.forEach((file, index) => {
+      formData.append(`files`, file); // Append each file to 'files' key
+    });
+    formData.append('client_id', client_id);
+    formData.append('campaign_id', campaign_id);
+    formData.append('created_by', userId);
+
+    console.log('Sending FormData to /api/bulk-campaigns:', {
+      files: files.map(file => file.name),
+      client_id,
+      campaign_id,
+      created_by: userId,
+    });
+
+    const response = await apiClient.post<HiringCampaign[]>('/api/bulk-campaigns', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log('Bulk campaign API response:', JSON.stringify(response.data, null, 2));
+    return response.data;
+  } catch (error) {
+    console.error('Error in createBulkCampaigns:', error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('Bulk campaign API error:', error.response.data);
+      throw new Error((error.response.data as ApiError).error || 'Failed to create bulk campaigns');
+    }
+    throw new Error(error instanceof Error ? error.message : 'Network error while creating bulk campaigns');
   }
 };
 //update the campign talent aqusation team inside the candidate search page
@@ -1149,5 +1392,101 @@ export const sendChatQuery = async (query: string): Promise<string> => {
       throw new Error((error.response.data as ApiError).error || 'Failed to process chat query');
     }
     throw new Error('Network error while processing chat query');
+  }
+};
+
+export interface ExcelImportResponse {
+  message: string;
+  inserted_count?: number;
+  campaign_id: string;
+}
+
+export interface ExcelRecord {
+  candidate_id: string;
+  campaign_id: string;
+  s_no: number;
+  candidate_name: string;
+  mobile_number: string;
+  email_id: string;
+  total_experience: string;
+  company: string;
+  ctc: string;
+  ectc: string;
+  offer_in_hand: string;
+  notice: string;
+  current_location: string;
+  preferred_location: string;
+  availability_for_interview: string;
+  created_at: string;
+}
+
+export interface RetrieveExcelResponse {
+  message: string;
+  campaign_id: string;
+  records: ExcelRecord[];
+  record_count?: number;
+}
+
+export const importExceldata = async (campaignId: string, file: File): Promise<ExcelImportResponse> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await apiClient.post<ExcelImportResponse>(`/import-excel/${campaignId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to import Excel file');
+    }
+    throw new Error('Network error while importing Excel file');
+  }
+};
+
+export const retrieveExcel = async (campaignId: string): Promise<RetrieveExcelResponse> => {
+  try {
+    const response = await apiClient.get<RetrieveExcelResponse>(`/retrieve-excel/${campaignId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to retrieve Excel records');
+    }
+    throw new Error('Network error while retrieving Excel records');
+  }
+};
+
+export interface Candidate {
+  // Add fields based on ExcelRecord or define appropriately
+  candidate_id: string;
+  campaign_id: string;
+  s_no: number;
+  candidate_name: string;
+  mobile_number: string;
+  email_id: string;
+  total_experience: string;
+  company: string;
+  ctc: string;
+  ectc: string;
+  offer_in_hand: string;
+  notice: string;
+  current_location: string;
+  preferred_location: string;
+  availability_for_interview: string;
+  created_at: string;
+}
+
+// Add this function
+export const fetchCandidateById = async (candidateId: string): Promise<Candidate> => {
+  try {
+    const response = await apiClient.get<Candidate>(`/candidate/${candidateId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch candidate');
+    }
+    throw new Error('Network error while fetching candidate');
   }
 };

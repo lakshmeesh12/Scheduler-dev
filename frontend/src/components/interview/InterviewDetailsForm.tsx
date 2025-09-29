@@ -125,45 +125,45 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
     <div className="space-y-6">
       <Card className="glass border-blue-200">
         <CardHeader>
-          <CardTitle className="flex items-center text-blue-700">
-            <FileText className="w-5 h-5 mr-2" />
+          <CardTitle className="flex items-center text-blue-700 text-sm font-medium">
+            <FileText className="w-4 h-4 mr-2" />
             Interview Information
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="title">Interview Title *</Label>
+            <Label htmlFor="title" className="text-xs">Interview Title *</Label>
             <Input
               id="title"
               placeholder="e.g., Frontend Developer Technical Interview"
               value={formData.title}
               onChange={(e) => updateFormData('title', e.target.value)}
-              className={cn(errors.title && 'border-red-500')}
+              className={cn("text-sm h-8", errors.title && 'border-red-500')}
             />
-            {errors.title && <p className="text-sm text-red-500 mt-1">{errors.title}</p>}
+            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
           </div>
 
           <div>
-            <Label htmlFor="description">Description *</Label>
+            <Label htmlFor="description" className="text-xs">Description *</Label>
             <Textarea
               id="description"
               placeholder="Brief description of the interview process, topics to be covered, etc."
               value={formData.description}
               onChange={(e) => updateFormData('description', e.target.value)}
               rows={4}
-              className={cn(errors.description && 'border-red-500')}
+              className={cn("text-sm min-h-[80px]", errors.description && 'border-red-500')}
             />
-            {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description}</p>}
+            {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="duration">Duration</Label>
+              <Label htmlFor="duration" className="text-xs">Duration</Label>
               <Select 
                 value={formData.duration.toString()} 
                 onValueChange={(value) => updateFormData('duration', parseInt(value))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="text-sm h-8">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -177,18 +177,18 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
             </div>
 
             <div>
-              <Label>Interview Date *</Label>
+              <Label className="text-xs">Interview Date *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      "w-full justify-start text-left font-normal text-sm h-8",
                       !formData.date && "text-muted-foreground",
                       errors.date && "border-red-500"
                     )}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-3 w-3" />
                     {formData.date ? format(formData.date, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
@@ -203,7 +203,7 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
                   />
                 </PopoverContent>
               </Popover>
-              {errors.date && <p className="text-sm text-red-500 mt-1">{errors.date}</p>}
+              {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
             </div>
           </div>
         </CardContent>
@@ -211,14 +211,14 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
 
       <Card className="glass border-purple-200">
         <CardHeader>
-          <CardTitle className="flex items-center text-purple-700">
-            <MapPin className="w-5 h-5 mr-2" />
+          <CardTitle className="flex items-center text-purple-700 text-sm font-medium">
+            <MapPin className="w-4 h-4 mr-2" />
             Meeting Preferences
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Meeting Type</Label>
+            <Label className="text-xs">Meeting Type</Label>
             <RadioGroup 
               value={formData.meetingType} 
               onValueChange={(value: 'in-person' | 'virtual') => updateFormData('meetingType', value)}
@@ -226,15 +226,15 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
             >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="virtual" id="virtual" />
-                <Label htmlFor="virtual" className="flex items-center cursor-pointer">
-                  <Video className="w-4 h-4 mr-2" />
+                <Label htmlFor="virtual" className="flex items-center cursor-pointer text-sm">
+                  <Video className="w-3 h-3 mr-2" />
                   Virtual Meeting
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="in-person" id="in-person" />
-                <Label htmlFor="in-person" className="flex items-center cursor-pointer">
-                  <MapPin className="w-4 h-4 mr-2" />
+                <Label htmlFor="in-person" className="flex items-center cursor-pointer text-sm">
+                  <MapPin className="w-3 h-3 mr-2" />
                   In-Person
                 </Label>
               </div>
@@ -243,25 +243,25 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
 
           {formData.meetingType === 'in-person' && (
             <div>
-              <Label htmlFor="location">Location *</Label>
+              <Label htmlFor="location" className="text-xs">Location *</Label>
               <Input
                 id="location"
                 placeholder="e.g., Conference Room A, Building 1, 123 Main St"
                 value={formData.location}
                 onChange={(e) => updateFormData('location', e.target.value)}
-                className={cn(errors.location && 'border-red-500')}
+                className={cn("text-sm h-8", errors.location && 'border-red-500')}
               />
-              {errors.location && <p className="text-sm text-red-500 mt-1">{errors.location}</p>}
+              {errors.location && <p className="text-xs text-red-500 mt-1">{errors.location}</p>}
             </div>
           )}
 
           {formData.meetingType === 'virtual' && (
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
               <div className="flex items-center text-blue-700 mb-2">
-                <Video className="w-5 h-5 mr-2" />
-                <span className="font-medium">Virtual Meeting Details</span>
+                <Video className="w-4 h-4 mr-2" />
+                <span className="font-medium text-sm">Virtual Meeting Details</span>
               </div>
-              <p className="text-sm text-blue-600">
+              <p className="text-xs text-blue-600">
                 A Microsoft Teams meeting link will be automatically generated and shared with all participants once the interview is scheduled.
               </p>
             </div>
@@ -271,8 +271,8 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
 
       <Card className="glass border-purple-200">
         <CardHeader>
-          <CardTitle className="flex items-center text-purple-700">
-            <Clock className="w-5 h-5 mr-2" />
+          <CardTitle className="flex items-center text-purple-700 text-sm font-medium">
+            <Clock className="w-4 h-4 mr-2" />
             Timezone Settings
           </CardTitle>
         </CardHeader>
@@ -284,19 +284,16 @@ export const InterviewDetailsForm = ({ onSave, initialDetails }: InterviewDetail
         </CardContent>
       </Card>
 
-      <Card className="glass border-green-200">
-        <CardContent className="pt-6">
-          <Button 
-            onClick={handleSubmit}
-            className="w-full bg-green-600 hover:bg-green-700"
-            size="lg"
-            disabled={isSubmitting}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSubmitting ? "Saving..." : "Save Interview Details"}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex justify-end">
+        <Button 
+          onClick={handleSubmit}
+          className="bg-green-600 hover:bg-green-700 text-sm py-1 px-3 h-8"
+          disabled={isSubmitting}
+        >
+          <Save className="w-3 h-3 mr-1" />
+          {isSubmitting ? "Saving..." : "Save"}
+        </Button>
+      </div>
     </div>
   );
 };
