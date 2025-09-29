@@ -12,8 +12,8 @@ class JobDescriptionTemplate:
             job_title: string # identify the job title for which the job description is all about
             primary_skills: dict(domain: dict(:libraries: [], tools: [],concepts: [], etc..)) # identify all primary skills/concepts and tools, etc. used in the projects or previous experience 
             secondary_skills: dict(domain: dict(:libraries: [], tools: [],concepts: [], etc..)) # other skills/tools mentioned in job description, projects, etc. Excluding primary skills
-            experience: int (minimum years of experience required for the particular designation/skills if mentioned else None)
-            education: dict(degree or institutional requirements in dictionary with keys, institution, degree)
+            experience: consolidated text requesting information on specific experience, projects, management experience, etc.
+            learning: consolidated text requiring information on education specifics, course/certification, publications information.
             other_specifications: list[points containing requirements]
 
         * other_specifications criteria:

@@ -545,6 +545,7 @@ class AggregatedScore(BaseModel):
     profile_id: str
     aggregated_score: float
     score_breakdown: Dict[str, float]
+    vector_score: float
     primary_vs_primary: SkillMatchDetails
     secondary_vs_secondary: SkillMatchDetails
     rank: Optional[int] = None

@@ -9,6 +9,7 @@ from calendar_ops import CalendarHandler
 import base64
 import os
 import json
+import markdown
 
 mongo_client = MongoClient("mongodb://localhost:27017")
 db = mongo_client["calendar_app"]
@@ -180,7 +181,7 @@ class EventScheduler:
 
             # Load and encode logo as base64
             logo_base64 = ""
-            logo_path = r"C:\Users\Quadrant\AM\Schedule\backend\images\Logo.webp"
+            logo_path = r"C:\Users\Quadrant\AM\Schedule\backend\images\Quadrant logo.png"
             try:
                 if os.path.exists(logo_path):
                     with open(logo_path, "rb") as logo_file:
@@ -947,4 +948,226 @@ class EventScheduler:
         
         except Exception as e:
             logger.error(f"Unexpected error in scheduler: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+        
+    async def schedule_drives(
+        self,
+        session_id: str,
+        drive_details: Dict[str, str],
+        slot: Dict[str, str],
+        mail_template: Dict[str, str],
+        to_emails: List[str],
+        cc_emails: Optional[List[str]] = None,
+        timezone: str = "UTC",
+        campaign_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        try:
+            logger.info(f"Starting drive scheduling for session_id: {session_id}, campaign_id: {campaign_id}")
+
+            # Validate session
+            session = db.panel_selections.find_one({"session_id": session_id})
+            if not session:
+                logger.error(f"Session not found: {session_id}")
+                raise HTTPException(status_code=404, detail="Session not found")
+
+            # Get organizer details
+            created_by = session.get("created_by")
+            if not created_by:
+                logger.error(f"Organizer not found for session: {session_id}")
+                raise HTTPException(status_code=404, detail="Organizer not found")
+
+            organizer = db.users.find_one({"user_id": created_by}, {"email": 1, "display_name": 1, "access_token": 1, "expires_in": 1, "last_login": 1})
+            if not organizer or not organizer.get("email"):
+                logger.error(f"Organizer email not found for user_id: {created_by}")
+                raise HTTPException(status_code=404, detail="Organizer email not found")
+
+            # Check access token validity
+            if not organizer.get("access_token"):
+                logger.error(f"No access token for organizer: {created_by}")
+                raise HTTPException(status_code=401, detail="No access token for organizer. Please re-authenticate.")
+            
+            last_login = organizer.get("last_login")
+            expires_in = organizer.get("expires_in", 0)
+            if last_login and expires_in:
+                expiration_time = last_login + timedelta(seconds=expires_in)
+                if datetime.utcnow() > expiration_time:
+                    logger.error(f"Access token expired for user: {created_by}")
+                    raise HTTPException(status_code=401, detail="Access token expired. Please re-authenticate via /login.")
+
+            # Check if organizer is a personal account
+            personal_domains = ["outlook.com", "hotmail.com", "live.com"]
+            is_personal_account = any(domain in organizer["email"].lower() for domain in personal_domains)
+            if is_personal_account:
+                logger.warning(f"Organizer {organizer['email']} is a personal account. Teams meeting link may not be generated.")
+
+            # Validate emails
+            email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            invalid_to_emails = [email for email in to_emails if not re.match(email_regex, email)]
+            if invalid_to_emails:
+                logger.error(f"Invalid to_emails: {invalid_to_emails}")
+                raise HTTPException(status_code=400, detail=f"Invalid to email format: {invalid_to_emails}")
+            if cc_emails:
+                invalid_cc_emails = [email for email in cc_emails if not re.match(email_regex, email)]
+                if invalid_cc_emails:
+                    logger.error(f"Invalid cc_emails: {invalid_cc_emails}")
+                    raise HTTPException(status_code=400, detail=f"Invalid cc email format: {invalid_cc_emails}")
+
+            # Validate timezone
+            if timezone not in pytz.all_timezones:
+                logger.error(f"Invalid timezone: {timezone}")
+                raise HTTPException(status_code=400, detail="Invalid timezone")
+
+            # Parse slot times
+            try:
+                slot_date = slot["date"]
+                start_time_str = f"{slot_date}T{slot['start_time']}"
+                end_time_str = f"{slot_date}T{slot['end_time']}"
+                start_time_naive = datetime.strptime(start_time_str, "%Y-%m-%dT%H:%M")
+                end_time_naive = datetime.strptime(end_time_str, "%Y-%m-%dT%H:%M")
+                preferred_tz = pytz.timezone(timezone)
+                start_time_local = preferred_tz.localize(start_time_naive)
+                end_time_local = preferred_tz.localize(end_time_naive)
+                start_time_utc = start_time_local.astimezone(pytz.UTC)
+                end_time_utc = end_time_local.astimezone(pytz.UTC)
+                logger.info(f"Parsed slot times - start: {start_time_local.isoformat()}, end: {end_time_local.isoformat()}")
+            except (KeyError, ValueError) as e:
+                logger.error(f"Invalid slot format: {str(e)}")
+                raise HTTPException(status_code=400, detail="Invalid slot format. Must include date (YYYY-MM-DD), start_time, end_time (HH:MM)")
+
+            # Convert markdown body to HTML
+            body_content = markdown.markdown(mail_template.get("body", ""), extensions=['fenced_code'])
+            if not body_content.strip().startswith("<p"):
+                body_content = f"<p>{body_content}</p>"
+
+            # Load and encode logo
+            logo_base64 = ""
+            logo_path = r"C:\Users\Quadrant\AM\Schedule\backend\images\Quadrant logo.png"
+            try:
+                if os.path.exists(logo_path):
+                    with open(logo_path, "rb") as logo_file:
+                        logo_data = logo_file.read()
+                        logo_base64 = base64.b64encode(logo_data).decode('utf-8')
+                        logger.info("Logo loaded and encoded successfully")
+                else:
+                    logger.warning(f"Logo file not found at: {logo_path}")
+            except Exception as e:
+                logger.error(f"Error loading logo: {str(e)}")
+
+            # Prepare email template with logo
+            logo_src = f"data:image/webp;base64,{logo_base64}" if logo_base64 else ""
+            email_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; color: #333333; line-height: 1.6; margin: 0; padding: 0; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; }}
+                    .header {{ text-align: center; padding-bottom: 20px; }}
+                    .header img {{ max-width: 150px; height: auto; }}
+                    .content {{ padding: 20px; background-color: #f9f9f9; border-radius: 5px; }}
+                    .details {{ margin: 20px 0; }}
+                    .details p {{ margin: 5px 0; }}
+                    .footer {{ text-align: center; font-size: 12px; color: #777777; margin-top: 20px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        {f'<img src="{logo_src}" alt="Quadrant Technologies Logo">' if logo_base64 else '<h2>Quadrant Technologies</h2>'}
+                    </div>
+                    <div class="content">
+                        {body_content}
+                        <p>A Microsoft Teams meeting link will be provided below if applicable.</p>
+                    </div>
+                    <div class="footer">
+                        <p>Quadrant Technologies | Empowering Your Future</p>
+                        <p>&copy; {datetime.utcnow().year} Quadrant Technologies. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            # Prepare event data
+            event_data = {
+                "subject": mail_template.get("subject", drive_details["title"]),
+                "body": {
+                    "contentType": "HTML",
+                    "content": email_body
+                },
+                "start": {
+                    "dateTime": start_time_utc.isoformat(),
+                    "timeZone": timezone
+                },
+                "end": {
+                    "dateTime": end_time_utc.isoformat(),
+                    "timeZone": timezone
+                },
+                "attendees": [
+                    {
+                        "emailAddress": {
+                            "address": email,
+                            "name": email
+                        },
+                        "type": "required"
+                    } for email in to_emails
+                ],
+                "isOnlineMeeting": True,
+                "onlineMeetingProvider": "teamsForBusiness",
+                "location": {
+                    "displayName": drive_details.get("location", "Microsoft Teams Meeting")
+                }
+            }
+
+            # Add CC emails as optional attendees
+            if cc_emails:
+                for email in cc_emails:
+                    if email not in to_emails:
+                        event_data["attendees"].append({
+                            "emailAddress": {
+                                "address": email,
+                                "name": email
+                            },
+                            "type": "optional"
+                        })
+
+            logger.info(f"Event attendees: {[attendee['emailAddress']['address'] for attendee in event_data['attendees']]}")
+
+            # Create event
+            result = await self.calendar_handler.create_event(created_by, event_data)
+            logger.info(f"Event created successfully, event_id: {result.get('id')}")
+
+            # Store event details
+            db.drives.insert_one({
+                "session_id": session_id,
+                "client_id": drive_details["clientId"],
+                "title": drive_details["title"],
+                "description": drive_details["description"],
+                "date": slot_date,
+                "start_time": slot["start_time"],
+                "end_time": slot["end_time"],
+                "timezone": timezone,
+                "to_emails": to_emails,
+                "cc_emails": cc_emails or [],
+                "event_id": result.get("id"),
+                "campaign_id": campaign_id,
+                "created_at": datetime.utcnow()
+            })
+
+            teams_link = result.get("onlineMeeting", {}).get("joinUrl") if result.get("onlineMeeting") else None
+            if is_personal_account and not teams_link:
+                logger.warning(f"No Teams link generated for personal account: {organizer['email']}")
+
+            return {
+                "message": "Drive event scheduled successfully",
+                "event_id": result.get("id"),
+                "teams_link": teams_link
+            }
+
+        except HTTPException as e:
+            logger.error(f"HTTPException: {str(e.detail)}, status_code: {e.status_code}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))

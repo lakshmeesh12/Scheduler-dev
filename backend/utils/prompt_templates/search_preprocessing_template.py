@@ -15,39 +15,20 @@ class SearchProcessTemplate:
         **Output Format:**
         - A Python list `[]`.
         - Each element inside the list must be a dictionary.
-        - Each dictionary can contain the following keys, **only if** the corresponding information is present for that specific extracted criterion:
-            1.  `field_location`: Use this key **only** when a location (City, State) is explicitly associated with a specific skill, experience, project, or attribute mentioned in the query. The value must be a tuple containing the full location string and an abbreviated version: `('City StateName', 'City ST')`.
-                * *Example Query:* "find engineers with bridge design experience in Sacramento California" -> `field_location: ('Sacramento California', 'Sacramento CA')`
-            2.  `location`: Use this key **only** when the query asks for the *current* location of individuals (City, State, country) and it's *not* directly tied to a specific experience/project mentioned in the *same phrase*. The value format is the same tuple as `field_location`: `('City StateName', 'City ST')`.
-                * *Example Query:* "who lives in Austin Texas?" -> `location: ('Austin Texas', 'Austin TX')`
-            3.  `keywords`: A list of strings. Include meaningful search terms (nouns, noun chunks/phrases, organization name, key concepts, skills, technologies, job titles) extracted from the query.
+        - Each dictionary can contain the following keywords, **only if** the corresponding information is present for that specific extracted criterion:
+            `keywords`: A list of strings. Include meaningful search terms (nouns, noun chunks/phrases, organization name, key concepts, skills, technologies, job titles) extracted from the query.
                 * **Crucially:** Convert verbs to their root form by removing common suffixes like `-ing` or `-ed` (e.g., "managing" -> "manage", "developed" -> "develop", "capping" -> "cap").
-                * **Exclude:** Locations (handled by `location`/`field_location`), names (handled by `names`), and keywords generic/common words (e.g., 'experience', 'projects', 'certification', 'publications', 'team', 'work', 'professional', 'people', 'person', 'with', 'in', 'who', 'are', 'the', 'a', 'is', etc.). Focus on the *specific* distinguishing terms.
                 * *Example Query:* "looking for project managers experienced in software development" -> `keywords: ['project manager', 'software develop']`
-            4.  `names`: A list of strings containing any person names or anything that may look like names mentioned in the query. Extract names case-insensitively but preserve original casing in the output list.
-                * *Example Query:* "find projects by John Verduin in Boston MA" -> `names: ['John Verduin']`
-                   (Note: If any keyword or term in un-identified consider it to be name)
-            6.  `education`: If the query keywords contains institution/university name or degree name like Bachelors or masters then add them under the education section as individual terms in list.
-                * *Example Query:* "bachelors in computer science in California university" -> `education`: ['Bachelors', 'computer science', 'california universiry']
-
+            
+            
         **Instructions & Constraints:**
 
-        1.  **Decomposition:** Break down the query. If a query mentions multiple distinct criteria (e.g., Skill A in Location X *and* Skill B in Location Y), create a *separate dictionary* for each distinct criterion set within the output list. Do not combine unrelated keywords and locations into a single dictionary record.
+        1.  **Decomposition:** Break down the query. If a query mentions multiple distinct criteria create a *separate dictionary* for each distinct criterion set within the output list. Do not combine unrelated keywords and locations into a single dictionary record.
         2.  **Keyword Processing:** 
             * If there is a single word or a bigram or  short phrase in the query distinguish whether they are casual words or search terms and add them to keywords if they are not generic words like is, the, projects, etc
             * Strictly adhere to the verb root form conversion (remove `-ing`, `-ed`). Only include specific, meaningful keywords, excluding the generic terms listed above and any other simple/common words.
             * If any nouns containing any organization, location, association names or any specific entity name are provided add them to keywords.
             
-        3.  **Location Specificity:**
-            * `location` and `field_location` keys are **strictly** for locations mentioned as City, State.
-            * field location can contain long form or short form of state names if mentioned do consider both long and short forms in search
-            * Use `field_location` if the location is tied to a keyword/experience in the phrase.
-            * Use `location` only for current/general location requests not tied to a specific experience keyword in the same phrase.
-            * Always use the tuple format `('City StateName', 'City ST')` for states. You may need internal knowledge or a tool to map state names to abbreviations.
-        4.  **Field Presence:** Only include a key (`location`, `field_location`, `keywords`, `names`) in a dictionary if relevant information is actually found for that specific criterion set in the query. Do not include keys with empty values (e.g., `keywords: []` if no keywords apply to that specific record).
-        5.  **No Extra Output:** Generate *only* the Python list of dictionaries. Do not include any introductory text, explanations, or concluding remarks.
-        6.  **Case Handling:** Keyword extraction should generally be case-insensitive, but the output keywords should preferably be lowercase. Names should be extracted case-insensitively but outputted with original casing.
-        7.  **Names:** Strictly capture names if present in query.
         
         **Query:**
         {query}
@@ -55,7 +36,7 @@ class SearchProcessTemplate:
         ** keywords considerations and constraints **
 
         Given a keyword containing a phrase or n-gram
-            * if the n-gram is a specific term or a prpper noun refering to a specific organization, client name, or name of place (port, forest, etc)
+            * if the n-gram is a specific term or a prpper noun refering to a specific organization, client name
             -> add a key `split` with boolean value `False` to the corresponding dictionary.
             * else if the keywords contain any action or any combinational terms which are not proper noun-chunk
             -> add a key `split` with boolean value `True` to the corresponding dictionary
@@ -65,11 +46,8 @@ class SearchProcessTemplate:
         # Note -  The input query is not case sensitive
 
         example of keyword consideration cases: 
-            query: Who has experience working in National park service?
-            dict(keywords: [national park service], split: False)
-
-            query: who has sediment capping experience in Texas?
-            dict(keywords: [sediment cap], split: True)
+            query: Who has experience implementing RAG applications?
+            dict(keywords: [RAG, Retrieval Augmented Generation, vector database], split: False)
 
         ** Keyword phrase Samples **
         Construction oversight, Construction administration, Construction management, Cost estimate, Engineer of Record (EOR), 

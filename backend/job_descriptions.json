@@ -1,0 +1,802 @@
+[
+    {
+        "Job Title": "Java Backend Engineer",
+        "Job Description": "Develop and maintain server-side applications using Java. Ensure high performance and scalability of backend systems.",
+        "Key Responsibilities": [
+            "Write clean, efficient Java code.",
+            "Design and implement APIs.",
+            "Troubleshoot and debug backend issues.",
+            "Collaborate with frontend developers."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Strong knowledge of Java and Spring Framework.",
+            "Experience with RESTful APIs.",
+            "Familiarity with databases (e.g., MySQL)."
+        ]
+    },
+    {
+        "Job Title": "Python Data Scientist",
+        "Job Description": "Analyze large datasets to derive actionable insights using Python. Build predictive models and optimize data pipelines.",
+        "Key Responsibilities": [
+            "Develop machine learning models using Python.",
+            "Clean and preprocess data for analysis.",
+            "Collaborate with data engineers to streamline ETL processes.",
+            "Present insights to stakeholders."
+        ],
+        "Required Skills & Experience": [
+            "Masters in Data Science, Statistics, or related field.",
+            "Proficiency in Python (pandas, scikit-learn).",
+            "Experience with data visualization tools (e.g., Tableau).",
+            "Knowledge of SQL and big data frameworks."
+        ]
+    },
+    {
+        "Job Title": "Frontend Developer",
+        "Job Description": "Create responsive and user-friendly web interfaces using modern JavaScript frameworks. Ensure cross-browser compatibility.",
+        "Key Responsibilities": [
+            "Build UI components using React.js.",
+            "Optimize web applications for performance.",
+            "Collaborate with UX designers to implement designs.",
+            "Ensure accessibility standards are met."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or related field.",
+            "Expertise in JavaScript, HTML, and CSS.",
+            "Experience with React.js or Vue.js.",
+            "Familiarity with Webpack and Git."
+        ]
+    },
+    {
+        "Job Title": "DevOps Engineer",
+        "Job Description": "Manage CI/CD pipelines and cloud infrastructure to ensure reliable deployments. Automate infrastructure provisioning.",
+        "Key Responsibilities": [
+            "Configure and maintain AWS/GCP infrastructure.",
+            "Implement CI/CD pipelines using Jenkins.",
+            "Monitor system performance and uptime.",
+            "Collaborate with development teams for deployments."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Experience with Docker and Kubernetes.",
+            "Proficiency in scripting (e.g., Bash, Python).",
+            "Knowledge of cloud platforms (AWS, GCP)."
+        ]
+    },
+    {
+        "Job Title": "Mobile App Developer",
+        "Job Description": "Develop and maintain mobile applications for iOS and Android platforms. Ensure high performance and user satisfaction.",
+        "Key Responsibilities": [
+            "Build mobile apps using Swift or Kotlin.",
+            "Integrate APIs and third-party services.",
+            "Optimize apps for performance and battery life.",
+            "Test apps for compatibility across devices."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or related field.",
+            "Experience with Swift and/or Kotlin.",
+            "Knowledge of mobile UI/UX principles.",
+            "Familiarity with REST APIs and Git."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 6",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 7",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 8",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 9",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 10",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 11",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 12",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 13",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 14",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 15",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 16",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 17",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 18",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 19",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 20",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 21",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 22",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 23",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 24",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 25",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 26",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 27",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 28",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 29",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 30",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 31",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 32",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 33",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 34",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 35",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 36",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 37",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 38",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 39",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 40",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 41",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 42",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 43",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 44",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 45",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 46",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 47",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 48",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 49",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    },
+    {
+        "Job Title": "Software Engineer 50",
+        "Job Description": "Develop and maintain software solutions for various applications. Ensure code quality and scalability.",
+        "Key Responsibilities": [
+            "Write efficient code in various languages.",
+            "Collaborate with cross-functional teams.",
+            "Debug and resolve software issues.",
+            "Contribute to system architecture design."
+        ],
+        "Required Skills & Experience": [
+            "Bachelors in Computer Science or equivalent.",
+            "Proficiency in programming languages (e.g., Java, Python).",
+            "Experience with version control systems (e.g., Git).",
+            "Strong problem-solving skills."
+        ]
+    }
+]

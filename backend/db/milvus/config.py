@@ -47,7 +47,7 @@ from utils.chatgpt import dense_embedding
 
 nest_asyncio.apply()
 
-collection_name = "rms"
+collection_name = os.environ['MILVUS_COLLECTION']
 
 vector_store = None
 
@@ -71,16 +71,15 @@ vector_sparse_index_params = {
 }
 
 metadata_fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
     FieldSchema(name="name", dtype=DataType.STRING),
-    FieldSchema(name="email", dtype=DataType.STRING),
-    FieldSchema(name="number", dtype=DataType.STRING, is_nullable=True),
-    FieldSchema(name="linkedin", dtype=DataType.STRING, is_nullable=True),
-    FieldSchema(name="GitHub", dtype=DataType.STRING, is_nullable=True),
-    FieldSchema(name="website", dtype=DataType.STRING, is_nullable=True),
+    FieldSchema(name="profile_id", dtype=DataType.STRING),
+    FieldSchema(name='type', dtype=DataType.STRING),
+    FieldSchema(name='status', dtype=DataType.STRING),
+    FieldSchema(name='active', dtype=DataType.BOOL),
     FieldSchema(name="total_experience", dtype=DataType.INT32, is_nullable=True),
-    FieldSchema(name="job_title", dtype=DataType.VARCHAR, max_length=100),
-    FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=1596, enable_analyzer=True, enable_match=True)
+    FieldSchema(name="job_title", dtype=DataType.VARCHAR, max_length=200),
+    FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=1500, enable_analyzer=True, enable_match=True)
 ]
 
 # Define the dense vector fields (experience, projects, education, course/certifications, achievements)
@@ -98,8 +97,12 @@ sparse_vector_fields = [
     FieldSchema(name="secondary_skills", dtype=DataType.FLOAT_VECTOR, dim=128, is_vector=True),
 ]
 
+dense_vector_fields = [
+    FieldSchema(name='page_content', dtype=DataType.FLOAT_VECTOR, dim=1596)
+]
+
 # Combine the metadata, dense vectors, and sparse vectors into one complete schema
-fields = metadata_fields + dense_vector_fields + sparse_vector_fields
+fields = metadata_fields + dense_vector_fields
 
 # Create the collection schema
 schema = CollectionSchema(fields, description="Schema for LangChain Milvus Vector Store")
@@ -107,38 +110,92 @@ schema = CollectionSchema(fields, description="Schema for LangChain Milvus Vecto
 if utility.has_collection(collection_name):
     print("Collection exists!")
 
-collection = Collection(name=collection_name, schema=schema)
+collection = Collection(name=collection_name)
+
+def process_education(records):
+    if records:
+        text = ""
+        for rec in records:
+            if isinstance(rec, dict):
+                text += f"\n{rec.get('degree', '')} degree in {rec.get('institution', '')} institution in {rec.get('domain', '')} domain"
+            elif isinstance(rec, str):
+                text += rec
+        return text.lstrip("\n")
+
+def process_projects(records):
+    if records:
+        text = ""
+        for rec in records:
+            if isinstance(rec, dict):
+                skills = ", ".join(rec.get('skills/tools', ''))
+                text += f"\n\nperformed {rec.get('title', '')} using {skills} skills.\n{rec.get('description', '')}\n{rec.get('impact', '')}"
+            elif isinstance(rec, str):
+                text += rec
+        return text.lstrip("\n\n")
+
+def process_experience(record):
+    if record:
+        text = ""
+        for rec in record:
+            if isinstance(rec, dict):
+                text += f"\nWorked in {rec.get('company', '')} as {rec.get('designation', '')}.\n{rec.get('description', '')}"
+            elif isinstance(rec, str):
+                text += rec
+        return text.lstrip("\n")
+
+def fetch_job_title(record):
+    if record:
+        job_title = [rec['designation'] for rec in record if isinstance(rec, dict) and rec.get('designation')]
+        return ", ".join(job_title)
+
+def process_skills(record):
+    text = ""
+    for k,v in record['primary_skills'].items():
+        for x,y in v.items():
+            text  += "\n" + k + ":\n " + x + ": " + ", ".join(y)
+    
+    for k,v in record['secondary_skills'].items():
+        for x,y in v.items():
+            text  += "\n" + k + ":\n " + x + ": " + ", ".join(y)
+    
+    return text.lstrip("\n")
 
 
-async def create_schema_from_profile(usr, rec):
+async def create_dataset(df):
     try:
-        milvus_records = []
+        if isinstance(df, list):
+            df = pd.DataFrame(df)
+        
+        static_fields = ['name', 'total_experience', "job_title", "profile_id","status", "active"]
+        
+        df['skills'] = df.apply(process_skills, axis=1)
+        df['projects'] = df['projects'].map(process_projects)
+        df['work_history'] = df['work_history'].map(process_experience)
+        df['certifications'] = df['certifications'].map(lambda x: ", ".join(x))
+        df['job_title'] = df['work_history'].map(fetch_job_title)
+        df['education'] = df['education'].map(process_education)
+        df['type'] = "common"
 
-        usr['name'] = usr.get('first_name', '') + " " + usr.get('last_name', '')
-        usr['name'] = usr['name'].lower()
-        
-        
-        
-        insertion = vector_store.add_documents(
-            milvus_records,
-            connection_args={"uri": uri, "user": user, "password": password, "token": token},
-            primary_field='id',
-            text_field="content",
-            vector_field='content_dense',
-            search_params=index_params[0],
-            embedding=embedding_functions[0],
-            index_params=index_params[0]
-        )
+        df["learning"] = df['education'] + "\n\n" + df['certifications']
+        df["experience"] = df['work_history'] + "\n\n" + df['projects'] + "\n\n" + df['skills']
 
-        print(insertion)        
-        return milvus_records
+        dataset1 = df[static_fields+['learning']].rename(columns={"learning": "content"})
+        dataset1['type'] = "learning"
+        dataset1 = dataset1.dropna(subset="content").apply(lambda x: Document(page_content=x['content'], metadata=dict(x)), axis=1)
+        dataset2 = df[static_fields+['experience']].rename(columns={"experience": "content"})
+        dataset2['type'] = "experience"
+        dataset2 = dataset2.dropna(subset="content").apply(lambda x: Document(page_content=x['content'], metadata=dict(x)), axis=1)
+
+        dataset = pd.concat([dataset1, dataset2]).values.tolist()
+
+        return dataset
+
     except Exception as err:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
-        print("Error in processing milvus records ", err)
+        print(f"Dataset creation failed: {message}")
         return []
-
 
 index_params = [vector_dense_index_params, vector_sparse_index_params]
 embedding_functions = [dense_embedding]

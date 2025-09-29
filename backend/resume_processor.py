@@ -11,11 +11,10 @@ import logging
 from db.mongo.config import db as mongo_db
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import tiktoken
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional, AsyncGenerator
 import hashlib
 from datetime import datetime, timezone
 from utils.chatgpt import run_chatgpt
-import tempfile
 import zipfile
 from uuid import uuid4
 from utils.helper import compute_duration
@@ -31,245 +30,303 @@ pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tessera
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class ChunkingPromptTemplate:
-    def __init__(self, data):
-        self.structure = f"""Extract resume details from below doctage text and convert into a python dictionary.
+    def __init__(self, data: str):
+        self.structure = f"""Extract resume details from the doctext below and return a Python-style JSON dictionary only.
 
-         ** Extract contents based on titles and their datatypes mentioned below
-            name: str, 
-            total_experience: int/None, 
-            email: str, 
-            linkedin_url: str/None, 
-            github_url: str/None, 
-            projects: dict(title, description, skills/tools, impact, start_date, end_date), 
-            work_history: dict(company, designation, description, start_date, end_date), 
-            primary_skills: dict(domain: dict(:libraries: [], tools: [],concepts: [], etc..)) # identify all primary skills/concepts and tools, etc. used in the projects or previous experience 
-            secondary_skills: dict(domain: dict(:libraries: [], tools: [],concepts: [], etc..)) # other skills/tools mentioned in job description, projects, etc. Excluding primary skills
-            course: dict(institution, domain, level), 
-            certifications: list[certifications], 
-            education: dict(institution, degree, domain)
+** Extract contents based on titles and their datatypes mentioned below
+    name: str,
+    total_experience: int/None,
+    email: str,
+    linkedin_url: str/None,
+    github_url: str/None,
+    projects: list[dict(title, description, skills/tools, impact, start_date, end_date)],
+    work_history: list[dict(company, designation, description, start_date, end_date)],
+    primary_skills: dict(domain: dict(libraries: [], tools: [], concepts: [])),
+    secondary_skills: dict(domain: dict(libraries: [], tools: [], concepts: [])),
+    course: dict(institution, domain, level),
+    certifications: list[str],
+    education: dict(institution, degree, domain)
 
-         Input doctext:
-         {data}
-        """
-
+Input doctext:
+{data}
+"""
         self.skills_instructions = """
-        **Skills instructions and structure example**
-         {
-      "Programming Languages": {
-         "Languages": ["Python", "Java", "C++", "C", "C#", "JavaScript", "TypeScript", "Go", "Rust", "Kotlin", "Swift", "Ruby", "PHP", "R", "Scala", "Perl", "MATLAB", "SQL", "Bash"]
-      },
-      "Data Structures & Algorithms": {
-         "Data Structures": ["Array", "Linked List", "Stack", "Queue", "Tree", "Graph", "Hash Table", "Heap", "Trie"],
-         "Algorithms": ["Binary Search", "Quick Sort", "Merge Sort", "Heap Sort", "Bubble Sort", "Insertion Sort", "Selection Sort", "Breadth-First Search (BFS)", "Depth-First Search (DFS)", "Dijkstra's Algorithm", "A* Search Algorithm", "Dynamic Programming", "Greedy Algorithms", "Backtracking"]
-      },
-      "Databases": {
-         "Relational Databases": ["MySQL", "PostgreSQL", "Oracle", "SQL Server", "SQLite"],
-         "NoSQL Databases": ["MongoDB", "Cassandra", "Redis", "CouchDB", "Neo4j", "Elasticsearch"],
-         "Concepts": ["SQL", "ACID", "CAP Theorem", "Database Normalization", "Transactions", "Indexing"]
-      },
-      "Big Data": {
-         "Frameworks": ["Hadoop", "Apache Spark", "Apache Flink", "Apache Kafka"],
-         "Tools": ["Hive", "HBase", "Apache Pig"],
-         "Concepts": ["Distributed Computing", "MapReduce", "ETL (Extract, Transform, Load)", "HDFS"]
-      },
-      "Machine Learning": {
-         "Concepts": ["Supervised Learning", "Unsupervised Learning", "Reinforcement Learning", "Feature Engineering", "Model Evaluation", "Overfitting", "Underfitting", "Bias-Variance Tradeoff", "Cross-Validation", "Dimensionality Reduction", "Regularization", "Ensemble Methods", "Hyperparameter Tuning"],
-         "Algorithms": ["Linear Regression", "Logistic Regression", "Decision Trees", "Random Forest", "Support Vector Machines (SVM)", "K-Nearest Neighbors (KNN)", "K-Means Clustering", "Hierarchical Clustering", "Naive Bayes", "Gradient Boosting", "XGBoost", "LightGBM", "CatBoost", "AdaBoost"],
-         "Libraries": ["scikit-learn", "Spark MLlib", "H2O.ai", "Weka"]
-      }
+**Skills instructions and structure example**
+{
+  "Programming Languages": {
+    "Languages": ["Python", "Java", "C++", "C", "C#", "JavaScript", "TypeScript", "Go", "Rust", "Kotlin", "Swift", "Ruby", "PHP", "R", "Scala", "Perl", "MATLAB", "SQL", "Bash"]
+  },
+  "Data Structures & Algorithms": {
+    "Data Structures": ["Array", "Linked List", ...],
+    "Algorithms": ["Binary Search", "Quick Sort", ...]
+  },
+  "Databases": {
+    "Relational Databases": ["MySQL", "PostgreSQL", "Oracle", "SQL Server", "SQLite"],
+    "NoSQL Databases": ["MongoDB", "Cassandra", "Redis", "CouchDB", "Neo4j", "Elasticsearch"],
+    "Concepts": ["SQL", "ACID", "CAP Theorem", "Normalization", "Transactions", "Indexing"]
+  },
+  "Big Data": {
+    "Frameworks": ["Hadoop", "Apache Spark", "Apache Flink", "Apache Kafka"],
+    "Tools": ["Hive", "HBase", "Apache Pig"],
+    "Concepts": ["Distributed Computing", "MapReduce", "ETL", "HDFS"]
+  },
+  "Machine Learning": {
+    "Concepts": ["Supervised Learning", "Unsupervised Learning", "Reinforcement Learning", "Feature Engineering", "Model Evaluation", "Bias-Variance", "Cross-Validation", "Dimensionality Reduction", "Regularization", "Ensemble Methods", "Hyperparameter Tuning"],
+    "Algorithms": ["Linear Regression", "Logistic Regression", "Decision Trees", "Random Forest", "SVM", "KNN", "K-Means", "Hierarchical Clustering", "Naive Bayes", "Gradient Boosting", "XGBoost", "LightGBM", "CatBoost", "AdaBoost"],
+    "Libraries": ["scikit-learn", "Spark MLlib", "H2O.ai", "Weka"]
+  }
+}
 
-        ** other instructions and constraints **
+** other instructions and constraints **
 
-        ### Do not add any own data other than that is present in the data. ###
-        ### For each of the extracted skill convert shortform to longform example: NLP -> Natural Language Processing ###
-        ### Maintain consistency in the output. ###
-        ### return only dictionary and not a variable along with dictionary ###
-        ### Return proper python dictionary without any syntactic errors that can be convertible by json.loads ###
-        """
+### Do not invent data that is not present.
+### Expand short forms: e.g., "NLP" -> "Natural Language Processing".
+### Return ONLY a JSON-compatible dictionary (no prose or code fences).
+### The JSON must be valid and loadable by json.loads.
+"""
         self.prompt = self.structure + self.skills_instructions
 
+
+def _now_utc_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
 class Resume:
-    """Class to process resume files (PDF/DOCX) with high speed and accuracy, storing results in MongoDB."""
+    """
+    Async resume pipeline: fully in-memory, concurrent, and with non-blocking MongoDB writes.
+    """
 
-    ALLOWED_EXTENSIONS = {'pdf', 'docx'}
+    ALLOWED_EXTENSIONS = {"pdf", "docx"}
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB per file
-    MAX_FILES = 500  # Maximum number of files
+    MAX_FILES = 500
 
-    def __init__(self, max_workers: int = None):
+    # Budgets/limits for performance
+    PDF_CONCURRENCY = 8
+    OCR_CONCURRENCY = 2
+    LLM_CONCURRENCY = 4
+    TARGET_TOKEN_BUDGET = 6000  # keep prompts small for faster LLM latency
+
+    def __init__(self, max_workers: Optional[int] = None):
         self.executor = ThreadPoolExecutor(max_workers=max_workers or max(os.cpu_count() * 2, 4))
         self.loop = asyncio.get_event_loop()
-        self.semaphore = asyncio.Semaphore(16)
+
+        # Separate semaphores: prevents CPU-bound and network-bound work from starving each other
+        self.pdf_semaphore = asyncio.Semaphore(self.PDF_CONCURRENCY)
+        self.ocr_semaphore = asyncio.Semaphore(self.OCR_CONCURRENCY)
+        self.llm_semaphore = asyncio.Semaphore(self.LLM_CONCURRENCY)
+
         self.db = mongo_db
         self.collection = self.db["profiles"]
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50,
-            length_function=self._token_count,
-            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
-        )
+
         self.tokenizer = tiktoken.encoding_for_model("text-embedding-3-small")
-        logger.info("Initialized ResumeProcessor with MongoDB and text splitter")
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=100,
+            length_function=self._token_count,
+            separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""],
+        )
+
+        logger.info("Initialized async Resume pipeline")
 
     def _token_count(self, text: str) -> int:
-        """Count tokens in text using tiktoken."""
         try:
             return len(self.tokenizer.encode(text))
         except Exception as e:
             logger.error(f"Error counting tokens: {str(e)}")
-            return 0
+            return len(text)
 
     def validate_file(self, file) -> Dict[str, bool | str]:
-        """Validate individual file."""
         if not file.filename:
             return {"valid": False, "error": "File has no name"}
-        file_ext = file.filename.split('.')[-1].lower()
+        file_ext = file.filename.split(".")[-1].lower()
         if file_ext not in self.ALLOWED_EXTENSIONS:
             return {"valid": False, "error": f"Invalid file type: {file_ext}. Allowed: {', '.join(self.ALLOWED_EXTENSIONS)}"}
         return {"valid": True}
 
-    async def get_text_from_image(self, image_data: bytes) -> str:
-        """Extract text from image using pytesseract."""
+    async def _image_to_text(self, image_data: bytes) -> str:
         try:
-            image = Image.open(io.BytesIO(image_data)).convert('RGB')
-            text = await self.loop.run_in_executor(
-                self.executor, lambda: pytesseract.image_to_string(image, config='--psm 6')
-            )
-            return re.sub(r'\s+', ' ', text).strip()
+            async with self.ocr_semaphore:
+                img = await self.loop.run_in_executor(self.executor, lambda: Image.open(io.BytesIO(image_data)).convert("RGB"))
+                text = await self.loop.run_in_executor(self.executor, lambda: pytesseract.image_to_string(img, config="--psm 6"))
+                return re.sub(r"\s+", " ", text).strip()
         except Exception as e:
-            logger.error(f"Error extracting text from image: {e}")
+            logger.warning(f"OCR failed: {e}")
             return ""
 
     async def get_text_docx(self, file_content: io.BytesIO) -> str:
-        """Extract text from DOCX, including paragraphs, tables, and images."""
         try:
-            logger.debug("Processing DOCX in-memory")
             doc = await self.loop.run_in_executor(self.executor, lambda: docx.Document(file_content))
-            full_text = []
+            pieces: List[str] = []
 
-            # Extract text from paragraphs
             for para in doc.paragraphs:
-                if para.text.strip():
-                    full_text.append(para.text.strip())
+                txt = para.text.strip()
+                if txt:
+                    pieces.append(txt)
 
-            # Extract text from tables
             for table in doc.tables:
                 for row in table.rows:
                     for cell in row.cells:
-                        if cell.text.strip():
-                            full_text.append(cell.text.strip())
+                        txt = cell.text.strip()
+                        if txt:
+                            pieces.append(txt)
 
-            # Extract images from DOCX
-            with tempfile.TemporaryDirectory() as temp_dir:
-                with zipfile.ZipFile(file_content) as docx_zip:
-                    image_tasks = []
-                    for file_info in docx_zip.infolist():
-                        if file_info.filename.startswith('word/media/'):
-                            image_data = docx_zip.read(file_info)
-                            image_tasks.append(self.get_text_from_image(image_data))
-                    if image_tasks:
-                        image_texts = await asyncio.gather(*image_tasks, return_exceptions=True)
-                        full_text.extend([text for text in image_texts if isinstance(text, str) and text.strip()])
-            return ' '.join(full_text).strip()
+            # opportunistic OCR of embedded images (non-blocking and limited)
+            ocr_tasks = []
+            try:
+                with zipfile.ZipFile(file_content) as zf:
+                    for info in zf.infolist():
+                        if info.filename.startswith("word/media/"):
+                            data = zf.read(info)
+                            ocr_tasks.append(self._image_to_text(data))
+            except Exception:
+                pass
+
+            if ocr_tasks:
+                # limit overall OCR concurrency
+                ocr_results = await asyncio.gather(*ocr_tasks, return_exceptions=True)
+                pieces.extend([t for t in ocr_results if isinstance(t, str) and t.strip()])
+
+            return " ".join(pieces).strip()
         except Exception as e:
-            logger.error(f"Error processing DOCX: {e}")
+            logger.error(f"DOCX extraction failed: {e}")
             return ""
 
-    async def get_text_pdf_page(self, page, page_num: int) -> str:
-        """Extract text from a single PDF page."""
-        async with self.semaphore:
+    async def _pdf_page_text(self, pdf, page_num: int) -> str:
+        async with self.pdf_semaphore:
             try:
+                page = await self.loop.run_in_executor(self.executor, lambda: pdf[page_num])
                 text = await self.loop.run_in_executor(
-                    self.executor, lambda: page.get_text("text", flags=fitz.TEXTFLAGS_TEXT).replace("\n", " ").replace(" -", "-")
+                    self.executor,
+                    lambda: page.get_text("text", flags=fitz.TEXTFLAGS_TEXT).replace("\n", " ").replace(" -", "-"),
                 )
-                return re.sub(r'\s+', ' ', text).strip()
+                text = re.sub(r"\s+", " ", text).strip()
+                # heuristic: if page has almost no text, fallback to image OCR for that page
+                if len(text) < 30:
+                    pix = await self.loop.run_in_executor(self.executor, lambda: page.get_pixmap(dpi=200))
+                    img_bytes = pix.tobytes("png")
+                    ocr_text = await self._image_to_text(img_bytes)
+                    return ocr_text or text
+                return text
             except Exception as e:
-                logger.error(f"Error processing PDF page {page_num + 1}: {e}")
+                logger.warning(f"PDF page {page_num+1} failed: {e}")
                 return ""
 
     async def get_text_pdf(self, file_content: io.BytesIO) -> str:
-        """Extract text from PDF in-memory, processing pages in parallel."""
         try:
-            logger.debug("Processing PDF in-memory")
             with fitz.open(stream=file_content, filetype="pdf") as pdf:
                 total_pages = len(pdf)
-                if total_pages == 0:
-                    return ""
-                batch_size = 50
-                all_text = []
-                for start in range(0, total_pages, batch_size):
-                    end = min(start + batch_size, total_pages)
-                    page_tasks = [self.get_text_pdf_page(pdf[page_num], page_num) for page_num in range(start, end)]
-                    page_texts = await asyncio.gather(*page_tasks, return_exceptions=True)
-                    all_text.extend([t for t in page_texts if isinstance(t, str) and t.strip()])
-                return ' '.join(all_text).strip()
+                tasks = [self._pdf_page_text(pdf, i) for i in range(total_pages)]
+                out: List[str] = []
+                # As pages finish, append to keep memory shallow
+                for coro in asyncio.as_completed(tasks):
+                    txt = await coro
+                    if txt:
+                        out.append(txt)
+                return " ".join(out).strip()
         except Exception as e:
-            logger.error(f"Error processing PDF: {e}")
+            logger.error(f"PDF extraction failed: {e}")
             return ""
 
     async def extract_text(self, filename: str, file_content: io.BytesIO) -> Tuple[str, str]:
-        """Extract text from a single file (PDF or DOCX)."""
-        try:
-            file_ext = filename.split('.')[-1].lower()
-            logger.debug(f"Processing file: {filename} ({file_ext})")
-            if file_ext == "pdf":
-                text = await self.get_text_pdf(file_content)
-            elif file_ext == "docx":
-                text = await self.get_text_docx(file_content)
-            else:
-                return filename, ""
-            return filename, text
-        except Exception as e:
-            logger.error(f"Error extracting text from {filename}: {e}")
-            return filename, ""
+        ext = filename.split(".")[-1].lower()
+        if ext == "pdf":
+            return filename, await self.get_text_pdf(file_content)
+        if ext == "docx":
+            return filename, await self.get_text_docx(file_content)
+        return filename, ""
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=8))
     async def _call_chatgpt_with_retry(self, prompt: str, system_message: str, temperature: float) -> str:
-        """Call ChatGPT with retry logic."""
         try:
-            response = await run_chatgpt(prompt, system_message, temperature)
-            if not response:
-                raise ValueError("Empty response from ChatGPT")
-            return response
+            async with self.llm_semaphore:
+                resp = await run_chatgpt(prompt, system_message, temperature)
+                if not resp or not isinstance(resp, str):
+                    raise ValueError("Empty response from ChatGPT")
+                return resp
         except Exception as e:
-            logger.error(f"ChatGPT API call failed: {str(e)}")
+            logger.error(f"ChatGPT call failed: {e}")
             raise
 
     def _sanitize_skills(self, skills: Any) -> Dict[str, Dict[str, List[str]]]:
-        """Sanitize skills field, ensuring nested dictionary structure."""
-        sanitized = {}
+        sanitized: Dict[str, Dict[str, List[str]]] = {}
         if isinstance(skills, dict):
             for domain, categories in skills.items():
-                if not isinstance(categories, dict):
-                    logger.warning(f"Invalid categories for domain {domain}, expected dict, got {type(categories)}")
-                    continue
-                sanitized_domain = {}
-                for category, skills_list in categories.items():
-                    if not isinstance(skills_list, list):
-                        logger.warning(f"Invalid skills list for {domain}/{category}, expected list, got {type(skills_list)}")
-                        continue
-                    sanitized_domain[category] = [str(skill) for skill in skills_list if isinstance(skill, str) and skill.strip()]
-                if sanitized_domain:
-                    sanitized[domain] = sanitized_domain
-        else:
-            logger.warning(f"Invalid skills format, expected dict, got {type(skills)}")
+                if isinstance(categories, dict):
+                    fixed = {}
+                    for cat, items in categories.items():
+                        if isinstance(items, list):
+                            fixed[cat] = [str(s) for s in items if isinstance(s, (str, int, float)) and str(s).strip()]
+                    if fixed:
+                        sanitized[domain] = fixed
         return sanitized
 
     def _sanitize_json_response(self, response: str) -> str:
-        """Sanitize and fix malformed JSON responses."""
         try:
-            # Remove code block markers and extra whitespace
-            cleaned = response.replace("```json", "").replace("```", "").strip()
-            # Fix common JSON issues (e.g., trailing commas, single quotes)
-            cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)  # Remove trailing commas
-            cleaned = cleaned.replace("'", '"')  # Replace single quotes with double quotes
+            cleaned = response.strip()
+            if cleaned.startswith("```"):
+                cleaned = cleaned.strip("`")
+                cleaned = re.sub(r"^json", "", cleaned, flags=re.IGNORECASE).strip()
+            cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)  # trailing commas
+            cleaned = cleaned.replace("“", '"').replace("”", '"').replace("’", "'").replace("`", '"')
+            # normalize single quotes for dicts that look Pythonic
+            # only replace if it seems JSON-like with keys
+            if '"' not in cleaned and re.search(r"\w+:", cleaned):
+                cleaned = re.sub(r"'", '"', cleaned)
             return cleaned
-        except Exception as e:
-            logger.error(f"Error sanitizing JSON response: {e}")
+        except Exception:
             return response
 
-    async def process_resume(self, filename: str, content: bytes) -> Dict:
-        """Process a single resume, extract text, and structure output."""
+    def _truncate_to_budget(self, text: str, budget_tokens: int) -> str:
+        toks = self.tokenizer.encode(text)
+        if len(toks) <= budget_tokens:
+            return text
+        return self.tokenizer.decode(toks[:budget_tokens])
+
+    async def _llm_extract(self, text: str) -> Dict[str, Any]:
+        # keep prompt compact to reduce latency
+        compact_text = self._truncate_to_budget(text, self.TARGET_TOKEN_BUDGET)
+        prompt = ChunkingPromptTemplate(compact_text).prompt
+
+        try:
+            raw = await self._call_chatgpt_with_retry(
+                prompt=prompt,
+                system_message="You are an expert at extracting structured content from resume text. Only return valid JSON.",
+                temperature=0.2,
+            )
+        except Exception:
+            raw = ""
+
+        cleaned = self._sanitize_json_response(raw) if raw else ""
+        parsed: Dict[str, Any]
+        if cleaned:
+            try:
+                parsed = json.loads(cleaned)
+            except Exception as e:
+                logger.warning(f"JSON parse failed, using fallback. Err: {e}")
+                parsed = {}
+        else:
+            parsed = {}
+
+        # fallback minimal shape to keep schema stable
+        parsed = {
+            "name": parsed.get("name") or None,
+            "primary_skills": self._sanitize_skills(parsed.get("primary_skills", {})),
+            "secondary_skills": self._sanitize_skills(parsed.get("secondary_skills", {})),
+            "work_history": parsed.get("work_history", []) or [],
+            "education": parsed.get("education", {}) or {},
+            "email": parsed.get("email", "") or "",
+            "linkedin_url": parsed.get("linkedin_url"),
+            "github_url": parsed.get("github_url"),
+            "projects": parsed.get("projects", []) or [],
+            "course": parsed.get("course", {}) or {},
+            "certifications": parsed.get("certifications", []) or [],
+            "raw_text": text,
+        }
+        return parsed
+
+    async def process_resume(self, filename: str, content: bytes) -> Optional[Dict[str, Any]]:
         try:
             file_content = io.BytesIO(content)
             _, text = await self.extract_text(filename, file_content)
@@ -277,128 +334,81 @@ class Resume:
                 logger.warning(f"No text extracted from {filename}")
                 return None
 
-            # Split text into chunks for processing
-            chunks = self.text_splitter.split_text(text)
-            if not chunks:
-                logger.warning(f"No chunks created for {filename}")
-                return None
+            parsed = await self._llm_extract(text)
 
-            # Process with ChatGPT for structured output
-            prompt = ChunkingPromptTemplate(text)
-            try:
-                response = await self._call_chatgpt_with_retry(
-                    prompt.prompt, "You are expert in extracting structured content from resume text", 0.4
-                )
-                logger.debug(f"Raw ChatGPT response for {filename}: {response}")
-            except Exception as e:
-                logger.error(f"Failed to get valid ChatGPT response for {filename} after retries: {str(e)}")
-                return None
-
-            # Parse and structure response
-            cleaned = self._sanitize_json_response(response)
-            try:
-                parsed = json.loads(cleaned)
-            except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON response for {filename}: {str(e)}. Raw response: {cleaned}")
-                # Fallback: Attempt to extract basic information
-                parsed = {
-                    "name": filename.split('.')[0],
-                    "primary_skills": {},
-                    "secondary_skills": {},
-                    "work_history": [],
-                    "education": {},
-                    "email": "",
-                    "linkedin_url": None,
-                    "github_url": None,
-                    "projects": [],
-                    "course": {},
-                    "certifications": [],
-                    "raw_text": text
-                }
-
-            # Sanitize skills fields to ensure nested dictionary structure
-            parsed['primary_skills'] = self._sanitize_skills(parsed.get('primary_skills', {}))
-            parsed['secondary_skills'] = self._sanitize_skills(parsed.get('secondary_skills', {}))
-            logger.debug(f"Processed skills for {filename}: primary={parsed['primary_skills']}, secondary={parsed['secondary_skills']}")
-
-            # Calculate total experience
+            # Compute total experience
             total_exp = 0
-            for rec in parsed.get('work_history', []):
-                start = rec.get('start_date')
-                end = rec.get('end_date') or "Sep 2025"
-                if end.lower() == "present":
+            for rec in parsed.get("work_history", []):
+                start = rec.get("start_date")
+                end = rec.get("end_date") or "Sep 2025"
+                if isinstance(end, str) and end.lower().strip() == "present":
                     end = "Sep 2025"
                 total_exp += compute_duration(start, end)
 
-            # Structure output
-            result = {
-                'profile_id': str(uuid4()),
-                'file_name': filename,
-                'file_hash': hashlib.sha256(content).hexdigest(),
-                'total_experience': total_exp,
-                'processed_at': datetime.now(timezone.utc),
-                'status': 'COMPLETED',
-                'active': True,
-                **parsed
+            profile = {
+                "profile_id": str(uuid4()),
+                "file_name": filename,
+                "file_hash": hashlib.sha256(content).hexdigest(),
+                "total_experience": total_exp,
+                "processed_at": _now_utc_iso(),
+                "status": "COMPLETED",
+                "active": True,
+                **parsed,
             }
-            return result
+
+            # Non-blocking insert to Mongo
+            try:
+                insert_result = await self.collection.insert_one(profile)
+                profile["_id"] = str(insert_result.inserted_id)
+            except Exception as e:
+                logger.warning(f"Mongo insert failed for {filename}: {e}")
+
+            return profile
         except Exception as e:
-            logger.error(f"Error processing resume {filename}: {e}")
+            logger.error(f"Error processing {filename}: {e}")
             return None
 
-    async def process_resumes(self, files: List[Tuple[str, bytes]]) -> Dict:
-        """Process multiple resumes in parallel and store in MongoDB."""
-        try:
-            start_time = time.time()
-            results = []
-            batch_size = 8  # Optimized batch size
-            for i in range(0, len(files), batch_size):
-                batch = files[i:i + batch_size]
-                batch_start = time.time()
-                tasks = [self.process_resume(filename, content) for filename, content in batch]
-                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
-                results.extend(batch_results)
-                logger.info(f"Processed batch of {len(batch)} resumes in {(time.time() - batch_start):.2f} seconds")
+    async def process_resumes_stream(
+        self, files: List[Tuple[str, bytes]]
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Processes resumes concurrently and yields each result as soon as it's ready.
+        Designed for streaming responses (NDJSON).
+        """
+        start = time.time()
+        tasks = []
+        for (fname, content) in files:
+            tasks.append(asyncio.create_task(self.process_resume(fname, content)))
 
-            successful = []
-            failed = []
-            for (filename, _), result in zip(files, results):
-                if isinstance(result, Exception) or result is None:
-                    failed.append(filename)
-                else:
-                    # Convert datetime to string before storing
-                    if "processed_at" in result and isinstance(result["processed_at"], datetime):
-                        result["processed_at"] = result["processed_at"].isoformat()
-                    successful.append(result)
+        success = 0
+        failure = 0
 
-            # Store in MongoDB
-            if successful:
-                mongo_start = time.time()
-                insert_result = await self.collection.insert_many(successful)
-                # Add MongoDB _id to results
-                for i, result in enumerate(successful):
-                    result["_id"] = str(insert_result.inserted_ids[i])  # Convert ObjectId to string
-                logger.info(f"Stored {len(successful)} resumes in profiles in {(time.time() - mongo_start):.2f} seconds")
+        for task in asyncio.as_completed(tasks):
+            result = await task
+            if result:
+                success += 1
+                yield {"type": "item", "data": result}
+            else:
+                failure += 1
+                # optionally include filename; we can’t easily recover it here from the task
+                yield {"type": "error", "data": {"message": "Failed to process a file"}}
 
-            total_time = time.time() - start_time
-            return {
-                "message": "Parsing completed successfully!" if not failed else "Parsing completed with errors!",
+        elapsed = time.time() - start
+        yield {
+            "type": "summary",
+            "data": {
+                "message": "Parsing completed successfully!" if failure == 0 else "Parsing completed with errors!",
                 "stats": {
-                    "success_count": len(successful),
-                    "failure_count": len(failed),
-                    "failed_files": failed,
+                    "success_count": success,
+                    "failure_count": failure,
                     "total_count": len(files),
-                    "parsed_content": {r['file_name']: r for r in successful},
-                    "processing_time": total_time
-                }
-            }
-        except Exception as e:
-            logger.error(f"Error in process_resumes: {e}")
-            raise
+                    "processing_time": elapsed,
+                },
+            },
+        }
 
     def __del__(self):
-        """Clean up ThreadPoolExecutor."""
         try:
-            self.executor.shutdown(wait=True)
+            self.executor.shutdown(wait=False)
         except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
+            logger.error(f"Executor cleanup failed: {e}")

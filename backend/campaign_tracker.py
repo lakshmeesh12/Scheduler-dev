@@ -9,6 +9,26 @@ import os
 import shutil
 import logging
 import re
+import os
+import PyPDF2
+import docx
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import List
+import openai
+from datetime import datetime
+import io
+import json
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import OpenAIError
+from openai import AsyncOpenAI
+from docx import Document
+import fitz  # PyMuPDF
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -24,7 +44,7 @@ class CampaignCreate(BaseModel):
     minExperience: int
     maxExperience: int
     positions: int
-    location: str
+    location: Optional[str] = None  # Changed to Optional[str] to allow None
     department: str
     jobType: Literal["Full-time", "Part-time", "Contract"]
     startDate: str
@@ -40,7 +60,7 @@ class CampaignResponse(BaseModel):
     positions: int
     status: Literal["Active", "Completed", "On Hold"]
     startDate: str
-    location: str
+    location: Optional[str] = None
     candidatesApplied: int
     candidatesHired: int
     currentRound: str
@@ -100,7 +120,7 @@ class CampaignDetailsUpdate(BaseModel):
     positions: int
 #this calss is to create jobs and manage jobs
 class CampaignTracker:
-    def __init__(self):
+    def __init__(self, max_workers=None):  # Add max_workers parameter with default None
         self.mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
         self.client = MongoClient(self.mongo_uri)
         self.db = self.client["calendar_app"]
@@ -108,6 +128,11 @@ class CampaignTracker:
         self.client_collection = self.db["clients"]
         self.users_collection = self.db["users"]
         self.campaign_manager_collection = self.db["campaign_manager"]
+        self.executor = ThreadPoolExecutor(max_workers=max_workers or max(os.cpu_count() * 2, 4))
+        self.semaphore = asyncio.Semaphore(20) # Limit concurrent tasks
+        self.openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        if not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("OPENAI_API_KEY is required")
 
     def _convert_objectid_to_str(self, data: Any) -> Any:
         if isinstance(data, ObjectId):
@@ -121,104 +146,336 @@ class CampaignTracker:
         return data
 
     async def create_campaign(self, campaign: CampaignCreate) -> CampaignResponse:
-        logger.info(f"Creating job with created_by: {campaign.created_by}, campaign_id: {campaign.campaign_id}")
-
+        logger.info(f"Creating job with created_by: {campaign.created_by}, campaign_id: {campaign.campaign_id}, jobTitle: {campaign.jobTitle}")
+        
         # Validate input fields
-        if not campaign.jobTitle.strip():
-            logger.error("Job Title is required")
-            raise HTTPException(status_code=400, detail="Job Title is required")
-        if not campaign.description.strip():
-            logger.error("Description is required")
-            raise HTTPException(status_code=400, detail="Description is required")
-        if not campaign.location.strip():
-            logger.error("Location is required")
-            raise HTTPException(status_code=400, detail="Location is required")
-        if campaign.positions < 1:
-            logger.error("At least one position is required")
-            raise HTTPException(status_code=400, detail="At least one position is required")
-        if campaign.minExperience > campaign.maxExperience:
-            logger.error("Minimum experience cannot be greater than maximum experience")
-            raise HTTPException(status_code=400, detail="Minimum experience cannot be greater than maximum experience")
-        if not self.client_collection.find_one({"_id": campaign.client_id}):
-            logger.error(f"Client not found: {campaign.client_id}")
-            raise HTTPException(status_code=404, detail="Client not found")
-        if not self.campaign_manager_collection.find_one({"_id": campaign.campaign_id}):
-            logger.error(f"Campaign not found: {campaign.campaign_id}")
-            raise HTTPException(status_code=404, detail="Campaign not found")
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        for member in campaign.talentAcquisitionTeam:
-            if not re.match(email_regex, member.email):
-                logger.error(f"Invalid email for team member: {member.email}")
-                raise HTTPException(status_code=400, detail=f"Invalid email format for team member: {member.email}")
+        try:
+            if not isinstance(campaign.jobTitle, str) or not campaign.jobTitle.strip():
+                logger.error("Job Title is invalid or empty")
+                raise HTTPException(status_code=400, detail="Job Title is required and must be a non-empty string")
+            if not isinstance(campaign.description, str) or not campaign.description.strip():
+                logger.error("Description is invalid or empty")
+                raise HTTPException(status_code=400, detail="Description is required and must be a non-empty string")
+            if not isinstance(campaign.department, str) or not campaign.department.strip():
+                logger.error("Department is invalid or empty")
+                raise HTTPException(status_code=400, detail="Department is required and must be a non-empty string")
+            if not isinstance(campaign.jobType, str) or campaign.jobType not in ["Full-time", "Part-time", "Contract"]:
+                logger.error(f"Invalid jobType: {campaign.jobType}")
+                raise HTTPException(status_code=400, detail="Job Type must be one of: Full-time, Part-time, Contract")
+            if not isinstance(campaign.startDate, str) or not campaign.startDate.strip():
+                logger.error("Start Date is invalid or empty")
+                raise HTTPException(status_code=400, detail="Start Date is required and must be a non-empty string")
+            if not isinstance(campaign.client_id, str) or not campaign.client_id.strip():
+                logger.error("Client ID is invalid or empty")
+                raise HTTPException(status_code=400, detail="Client ID is required and must be a non-empty string")
+            if not isinstance(campaign.campaign_id, str) or not campaign.campaign_id.strip():
+                logger.error("Campaign ID is invalid or empty")
+                raise HTTPException(status_code=400, detail="Campaign ID is required and must be a non-empty string")
+            if not isinstance(campaign.created_by, str) or not campaign.created_by.strip():
+                logger.error("Created By is invalid or empty")
+                raise HTTPException(status_code=400, detail="Created By is required and must be a non-empty string")
+            if campaign.positions < 1:
+                logger.error("Positions must be at least 1")
+                raise HTTPException(status_code=400, detail="At least one position is required")
+            if campaign.minExperience > campaign.maxExperience:
+                logger.error("Minimum experience cannot be greater than maximum experience")
+                raise HTTPException(status_code=400, detail="Minimum experience cannot be greater than maximum experience")
+            if campaign.location is not None and (not isinstance(campaign.location, str) or not campaign.location.strip()):
+                logger.error("Location is invalid")
+                raise HTTPException(status_code=400, detail="Location must be a non-empty string if provided")
+            
+            # Validate database references
+            if not self.client_collection.find_one({"_id": campaign.client_id}):
+                logger.error(f"Client not found: {campaign.client_id}")
+                raise HTTPException(status_code=404, detail="Client not found")
+            if not self.campaign_manager_collection.find_one({"_id": campaign.campaign_id}):
+                logger.error(f"Campaign not found: {campaign.campaign_id}")
+                raise HTTPException(status_code=404, detail="Campaign not found")
+            
+            # Validate talent acquisition team emails
+            email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            for member in campaign.talentAcquisitionTeam:
+                if not isinstance(member.email, str) or not re.match(email_regex, member.email):
+                    logger.error(f"Invalid email for team member: {member.email}")
+                    raise HTTPException(status_code=400, detail=f"Invalid email format for team member: {member.email}")
 
-        user = self.users_collection.find_one(
-            {"user_id": campaign.created_by},
-            {"user_id": 1, "display_name": 1}
-        )
-        if not user:
-            logger.error(f"User not found for created_by: {campaign.created_by}")
-            raise HTTPException(status_code=404, detail="User not found")
-        if not user.get("display_name"):
-            logger.error(f"Display name not found for user: {campaign.created_by}")
-            raise HTTPException(status_code=400, detail="User display name not set")
+            # Validate user
+            user = self.users_collection.find_one(
+                {"user_id": campaign.created_by},
+                {"user_id": 1, "display_name": 1}
+            )
+            if not user:
+                logger.error(f"User not found for created_by: {campaign.created_by}")
+                raise HTTPException(status_code=404, detail="User not found")
+            if not user.get("display_name"):
+                logger.error(f"Display name not found for user: {campaign.created_by}")
+                raise HTTPException(status_code=400, detail="User display name not set")
 
-        created_by_name = user["display_name"]
-        logger.info(f"Retrieved display_name: {created_by_name} for user_id: {campaign.created_by}")
+            created_by_name = user["display_name"]
+            logger.info(f"Retrieved display_name: {created_by_name} for user_id: {campaign.created_by}")
 
-        campaign_id = str(uuid4())
-        campaign_data = {
-            "_id": campaign_id,
-            "jobTitle": campaign.jobTitle,
-            "department": campaign.department,
-            "positions": campaign.positions,
-            "status": "Active",
-            "startDate": campaign.startDate,
-            "location": campaign.location,
-            "candidatesApplied": 0,
-            "candidatesHired": 0,
-            "currentRound": "Screening",
-            "description": campaign.description,
-            "minExperience": campaign.minExperience,
-            "maxExperience": campaign.maxExperience,
-            "jobType": campaign.jobType,
-            "client_id": campaign.client_id,
-            "campaign_id": campaign.campaign_id,
-            "created_by": campaign.created_by,
-            "created_by_name": created_by_name,
-            "talentAcquisitionTeam": [member.dict() for member in campaign.talentAcquisitionTeam],
-            "created_at": datetime.utcnow()
-        }
+            # Prepare campaign data
+            campaign_id = str(uuid4())
+            campaign_data = {
+                "_id": campaign_id,
+                "jobTitle": campaign.jobTitle,
+                "department": campaign.department,
+                "positions": campaign.positions,
+                "status": "Active",
+                "startDate": campaign.startDate,
+                "location": campaign.location,
+                "candidatesApplied": 0,
+                "candidatesHired": 0,
+                "currentRound": "Screening",
+                "description": campaign.description,
+                "minExperience": campaign.minExperience,
+                "maxExperience": campaign.maxExperience,
+                "jobType": campaign.jobType,
+                "client_id": campaign.client_id,
+                "campaign_id": campaign.campaign_id,
+                "created_by": campaign.created_by,
+                "created_by_name": created_by_name,
+                "talentAcquisitionTeam": [member.dict() for member in campaign.talentAcquisitionTeam],
+                "created_at": datetime.utcnow()
+            }
 
-        result = self.campaign_collection.insert_one(campaign_data)
-        if not result.inserted_id:
-            logger.error("Failed to create job")
-            raise HTTPException(status_code=500, detail="Failed to create job")
+            # Insert into database
+            logger.debug(f"Inserting campaign data into database: {campaign_data}")
+            result = self.campaign_collection.insert_one(campaign_data)
+            if not result.inserted_id:
+                logger.error("Failed to create job in database")
+                raise HTTPException(status_code=500, detail="Failed to create job")
 
-        logger.info(f"Job created successfully with id: {campaign_id}")
-        return CampaignResponse(
-            id=campaign_id,
-            jobTitle=campaign.jobTitle,
-            department=campaign.department,
-            positions=campaign.positions,
-            status="Active",
-            startDate=campaign.startDate,
-            location=campaign.location,
-            candidatesApplied=0,
-            candidatesHired=0,
-            currentRound="Screening",
-            description=campaign.description,
-            minExperience=campaign.minExperience,
-            maxExperience=campaign.maxExperience,
-            jobType=campaign.jobType,
-            client_id=campaign.client_id,
-            campaign_id=campaign.campaign_id,
-            created_by=campaign.created_by,
-            created_by_name=created_by_name,
-            talentAcquisitionTeam=campaign.talentAcquisitionTeam,
-            endDate=None,
-            Interview=[]
-        )
+            logger.info(f"Job created successfully with id: {campaign_id}")
+
+            # Construct response
+            response_data = CampaignResponse(
+                id=campaign_id,
+                jobTitle=campaign.jobTitle,
+                department=campaign.department,
+                positions=campaign.positions,
+                status="Active",
+                startDate=campaign.startDate,
+                location=campaign.location,
+                candidatesApplied=0,
+                candidatesHired=0,
+                currentRound="Screening",
+                description=campaign.description,
+                minExperience=campaign.minExperience,
+                maxExperience=campaign.maxExperience,
+                jobType=campaign.jobType,
+                client_id=campaign.client_id,
+                campaign_id=campaign.campaign_id,
+                created_by=campaign.created_by,
+                created_by_name=created_by_name,
+                talentAcquisitionTeam=campaign.talentAcquisitionTeam,
+                endDate=None,
+                Interview=[],
+                Interview_Round=None
+            )
+            logger.debug(f"Constructed CampaignResponse: {response_data.dict()}")
+            return response_data
+        except Exception as e:
+            logger.error(f"Error in create_campaign for jobTitle {campaign.jobTitle}: {str(e)}")
+            raise
+
+    # Rest of the code remains unchanged from previous version
     
+
+    def _extract_text(self, content: bytes, file_extension: str) -> str:
+        """Extract text from file content in a thread-safe manner."""
+        try:
+            text = ""
+            if file_extension == "pdf":
+                doc = fitz.open(stream=content, filetype="pdf")
+                for page_num, page in enumerate(doc, 1):
+                    extracted = page.get_text("text") or ""
+                    logger.debug(f"Extracted text from PDF page {page_num}: {extracted[:100]}...")
+                    text += extracted + "\n"
+                doc.close()
+            elif file_extension == "docx":
+                doc = Document(io.BytesIO(content))
+                for para in doc.paragraphs:
+                    logger.debug(f"Extracted paragraph from DOCX: {para.text[:100]}...")
+                    text += para.text + "\n"
+            return text.strip()
+        except Exception as e:
+            logger.error(f"Error in _extract_text: {str(e)}")
+            raise
+
+    async def get_text(self, content: bytes, file_extension: str, filename: str = None) -> str:
+        """Extract text asynchronously using ThreadPoolExecutor."""
+        async with self.semaphore:
+            try:
+                loop = asyncio.get_event_loop()
+                text = await loop.run_in_executor(self.executor, self._extract_text, content, file_extension)
+                if not text:
+                    logger.error(f"No text extracted from file: {filename or 'unknown'}")
+                    raise HTTPException(status_code=400, detail=f"No text could be extracted from the file: {filename or 'unknown'}")
+                logger.debug(f"Extracted text length: {len(text)} characters from {filename or 'unknown'}")
+                return text
+            except Exception as e:
+                logger.error(f"Error extracting text from {filename or 'unknown'}: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Error extracting text from {filename or 'unknown'}: {str(e)}")
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type(OpenAIError)
+    )
+    async def _extract_job_details_batch(self, texts: List[str]) -> List[List[Dict]]:
+        """Extract job details from a batch of texts using OpenAI API."""
+        try:
+            BATCH_SIZE = 10  # Process up to 10 texts per API call
+            results = []
+            for i in range(0, len(texts), BATCH_SIZE):
+                batch_texts = texts[i:i + BATCH_SIZE]
+                tasks = []
+                for text in batch_texts:
+                    prompt = f"""
+                    Extract job details from the following text. The text may contain one or multiple job descriptions—identify and separate each distinct job based on headings, sections, or logical breaks.
+
+                    For each job:
+                    - jobTitle: Mandatory non-empty string. If not explicitly stated, infer a suitable title.
+                    - description: Mandatory non-empty string. Include ALL relevant details (duties, skills, education, experience, certifications, etc.).
+                    - location: Optional string or null if not found.
+                    - minExperience: Optional integer (years), set to 0 if not found or invalid.
+                    - maxExperience: Optional integer (years), set to 2 if not found or invalid.
+                    - positions: Optional integer, set to 1 if not found or invalid.
+
+                    Do not exclude a job if jobTitle is missing—infer it. Only exclude if there's no meaningful content.
+                    Return a JSON object with a 'jobs' key containing an array of job detail objects.
+
+                    Text:
+                    {text}
+                    """
+                    tasks.append(
+                        self.openai_client.chat.completions.create(
+                            model="gpt-4o",
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant that extracts structured job details from text."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            response_format={"type": "json_object"}
+                        )
+                    )
+                responses = await asyncio.gather(*tasks, return_exceptions=True)
+                for response in responses:
+                    if isinstance(response, Exception):
+                        logger.error(f"Error in OpenAI API call: {str(response)}")
+                        results.append([])
+                        continue
+                    response_data = json.loads(response.choices[0].message.content)
+                    jobs = response_data.get("jobs", [])
+                    if not isinstance(jobs, list):
+                        logger.warning(f"Open AI response 'jobs' is not a list, converting to list: {jobs}")
+                        jobs = [jobs] if jobs else []
+                    results.append(jobs)
+            return results
+        except OpenAIError as e:
+            logger.error(f"OpenAI API error: {str(e)}")
+            raise
+
+    async def extract_job_details_from_file(self, content: bytes, file_extension: str) -> List[Dict]:
+        """Extract job details from a single file asynchronously."""
+        try:
+            text = await self.get_text(content, file_extension)
+            logger.debug(f"Sending request to Open AI API for job extraction")
+            job_batches = await self._extract_job_details_batch([text])
+            jobs = job_batches[0]  # Single file, so first batch
+
+            valid_jobs = []
+            for job in jobs:
+                logger.debug(f"Processing job: {job}")
+                job_title = job.get("jobTitle")
+                description = job.get("description")
+                if not isinstance(job_title, str) or not job_title.strip():
+                    logger.warning(f"Skipping job due to invalid jobTitle: {job}")
+                    continue
+                if not isinstance(description, str) or not description.strip():
+                    logger.warning(f"Skipping job due to invalid description: {job}")
+                    continue
+                valid_job = {
+                    "jobTitle": job_title,
+                    "description": description,
+                    "location": job.get("location", None) if isinstance(job.get("location"), (str, type(None))) else None,
+                    "minExperience": job.get("minExperience", 0) if isinstance(job.get("minExperience"), int) else 0,
+                    "maxExperience": job.get("maxExperience", 2) if isinstance(job.get("maxExperience"), int) else 2,
+                    "positions": job.get("positions", 1) if isinstance(job.get("positions"), int) else 1
+                }
+                logger.info(f"Valid job extracted: {valid_job}")
+                valid_jobs.append(valid_job)
+
+            if not valid_jobs:
+                logger.error("No valid jobs found after processing")
+                raise HTTPException(status_code=400, detail="No valid jobs with jobTitle and description found in the file")
+            
+            logger.info(f"Extracted {len(valid_jobs)} valid jobs from file")
+            return valid_jobs
+        except Exception as e:
+            logger.error(f"Error extracting job details: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+    async def create_bulk_campaigns(self, content: bytes, file_extension: str, client_id: str, campaign_id: str, created_by: str) -> List[CampaignResponse]:
+        """Create campaigns from a single file's job details."""
+        try:
+            if not isinstance(client_id, str) or not client_id.strip():
+                logger.error("Invalid client_id provided")
+                raise HTTPException(status_code=400, detail="Client ID is required and must be a non-empty string")
+            if not isinstance(campaign_id, str) or not campaign_id.strip():
+                logger.error("Invalid campaign_id provided")
+                raise HTTPException(status_code=400, detail="Campaign ID is required and must be a non-empty string")
+            if not isinstance(created_by, str) or not created_by.strip():
+                logger.error("Invalid created_by provided")
+                raise HTTPException(status_code=400, detail="Created By is required and must be a non-empty string")
+            
+            logger.info(f"Starting bulk campaign creation with client_id: {client_id}, campaign_id: {campaign_id}, created_by: {created_by}")
+            
+            job_details = await self.extract_job_details_from_file(content, file_extension)
+            results = []
+
+            async with self.semaphore:
+                for job in job_details:
+                    try:
+                        campaign = CampaignCreate(
+                            jobTitle=job["jobTitle"],
+                            description=job["description"],
+                            minExperience=job["minExperience"],
+                            maxExperience=job["maxExperience"],
+                            positions=job["positions"],
+                            location=job["location"],
+                            department="Engineering",
+                            jobType="Full-time",
+                            startDate=datetime.utcnow().strftime("%Y-%m-%d"),
+                            client_id=client_id,
+                            campaign_id=campaign_id,
+                            created_by=created_by,
+                            talentAcquisitionTeam=[]
+                        )
+                        logger.debug(f"Created CampaignCreate object: {campaign.dict()}")
+                        result = await self.create_campaign(campaign)  # Assumes create_campaign is async
+                        logger.info(f"Successfully created campaign for job: {job['jobTitle']}")
+                        results.append(result)
+                    except HTTPException as e:
+                        logger.error(f"Failed to create campaign for job {job['jobTitle']}: {e.detail}")
+                        continue
+                    except Exception as e:
+                        logger.error(f"Unexpected error creating campaign for job {job['jobTitle']}: {str(e)}")
+                        continue
+            
+            if not results:
+                logger.error("No campaigns created due to errors in job data")
+                raise HTTPException(status_code=400, detail="No campaigns created due to errors in job data")
+            
+            logger.info(f"Created {len(results)} campaigns successfully")
+            return results
+        except Exception as e:
+            logger.error(f"Error in create_bulk_campaigns: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error creating campaigns: {str(e)}")
+
+    def __del__(self):
+        """Clean up ThreadPoolExecutor."""
+        self.executor.shutdown(wait=True)
+
 
 
     async def update_campaign_details(self, campaign_id: str, details: CampaignDetailsUpdate) -> CampaignResponse:
