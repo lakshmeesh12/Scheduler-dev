@@ -4,12 +4,17 @@ from typing import List, Dict, Any
 from collections import Counter, defaultdict
 from typing import List, Dict, Any
 from dataclasses import dataclass
+import logging
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class EnhancedMilvusSearch:
     def __init__(self, vector_store: Milvus, filter_fields: List[str]):
         self.vector_store = vector_store
         self.filter_fields = filter_fields
+        logger.info(f"Initialized EnhancedMilvusSearch with filter_fields: {filter_fields}")
         
     def analyze_keyword_matches(
         self, 
@@ -49,13 +54,21 @@ class EnhancedMilvusSearch:
         if field_weights is None:
             field_weights = {field: 1.0 for field in self.filter_fields}
 
+        logger.info(f"Performing hybrid search with query: {query[:100]}..., k={k}, filter_expr={filter_expr}, text_field='content'")
+
         # Perform vector search
-        vector_results = self.vector_store.similarity_search_with_relevance_scores(
-            query,
-            k=k,
-            filter=filter_expr
-        )
-        
+        try:
+            vector_results = self.vector_store.similarity_search_with_relevance_scores(
+                query,
+                k=k,
+                filter=filter_expr,
+                text_field="content"  # Explicitly specify the text field
+            )
+            logger.info(f"Hybrid search returned {len(vector_results)} results")
+        except Exception as e:
+            logger.error(f"Hybrid search failed: {str(e)}")
+            raise
+
         enhanced_results = []
         for doc, vector_score in vector_results:
             # Analyze keyword matches
@@ -119,7 +132,6 @@ async def merge_unique_results(results_list: List[List[Dict]], top_k: int = 10) 
     :param top_k: Number of top results to return
     :return: List of unique merged results
     """
-    # Dictionary to store best results per user_id
     try:
         merged_dict = {}
         
@@ -173,7 +185,6 @@ async def merge_unique_results(results_list: List[List[Dict]], top_k: int = 10) 
                 'metadata': data['metadata'],
                 'page_content': data['page_content'],
                 'scores': {
-                    ''
                     'final_score': (data['best_combined_score'] * 
                                 (1 + 0.1 * (data['appearance_count'] - 1)))  # Boost for multiple appearances
                 },
@@ -194,5 +205,5 @@ async def merge_unique_results(results_list: List[List[Dict]], top_k: int = 10) 
         
         return sorted_results
     except Exception as e:
-        print(f"Error while merging results",str(e))
+        logger.error(f"Error while merging results: {str(e)}")
         return []

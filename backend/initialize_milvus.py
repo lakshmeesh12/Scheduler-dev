@@ -120,9 +120,6 @@ async def fetch_profiles():
 
 profiles = asyncio.run(fetch_profiles())   
 
-df = pd.DataFrame(profiles)
-print(df.columns)
-print(df.shape)
 
 vector_dense_index_params = {
     "metric_type": "COSINE",        # use true cosine if embeddings aren’t strictly length‑normalized
@@ -137,7 +134,7 @@ vector_dense_index_params = {
 
 def create_dataset(df):
     
-    static_fields = ['name', 'total_experience', "job_title", "profile_id", "status", "active"]
+    static_fields = ['name', 'total_experience', "job_title", "profile_id", "status", "active", "campaign_id", "client_id"]
     
     df['skills'] = df.apply(process_skills, axis=1)
     df['projects'] = df['projects'].map(process_projects)
@@ -146,7 +143,12 @@ def create_dataset(df):
     df['education'] = df['education'].map(process_education)
     df['job_title'] = df['work_history'].map(fetch_job_title)
     df['education'] = df['education'].map(process_education)
+    
     df['type'] = "common"
+    if "campaign_id" not in df.columns:
+        df['campaign_id'] = "1234"
+    if "client_id" not in df.columns:
+        df['client_id'] = None
     df['total_experience'] = df['total_experience'].fillna(0)
     df = df.fillna("")
 
@@ -166,9 +168,7 @@ def create_dataset(df):
 
     return dataset
 
-dataset = create_dataset(df)
-print(len(dataset))
-print(dataset[:4])
+
 index_params = vector_dense_index_params
 embedding_functions = dense_embedding
 
@@ -186,18 +186,28 @@ vector_store = Milvus(
 
 print("Loaded vector store!")
 
-vector_store.add_documents(dataset,
-            connection_args={"uri": uri, "user": user, "password": password, "token": token},
-            collection_name=collection_name,
-            primary_field='id',
-            text_field="content",
-            partition_key_field="123",
-            vector_field='content_dense',
-            search_params=index_params,
-            embedding=embedding_functions,
-            index_params=index_params
-)
+if profiles:
+    df = pd.DataFrame(profiles)
+    print(df.columns)
+    print(df.shape)
+    dataset = create_dataset(df)
+    print(len(dataset))
 
-ids = vector_store.get_pks("content==''")
-if ids:
-    vector_store.delete(ids=ids)
+    vector_store.add_documents(dataset,
+                connection_args={"uri": uri, "user": user, "password": password, "token": token},
+                collection_name=collection_name,
+                primary_field='id',
+                text_field="content",
+                partition_key_field="123",
+                vector_field='content_dense',
+                search_params=index_params,
+                embedding=embedding_functions,
+                index_params=index_params
+    )
+
+    ids = vector_store.get_pks("content==''")
+    if ids:
+        vector_store.delete(ids=ids)
+
+else:
+    print("No profiles found for initialization")

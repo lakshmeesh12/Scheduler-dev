@@ -101,16 +101,15 @@ dense_vector_fields = [
     FieldSchema(name='page_content', dtype=DataType.FLOAT_VECTOR, dim=1596)
 ]
 
-# Combine the metadata, dense vectors, and sparse vectors into one complete schema
-fields = metadata_fields + dense_vector_fields
+# # Combine the metadata, dense vectors, and sparse vectors into one complete schema
+# fields = metadata_fields + dense_vector_fields
 
-# Create the collection schema
-schema = CollectionSchema(fields, description="Schema for LangChain Milvus Vector Store")
+# # Create the collection schema
+# schema = CollectionSchema(fields, description="Schema for LangChain Milvus Vector Store")
 
-if utility.has_collection(collection_name):
-    print("Collection exists!")
-
-collection = Collection(name=collection_name)
+# if utility.has_collection(collection_name):
+#     print("Collection exists!")
+#     collection = Collection(name=collection_name)
 
 def process_education(records):
     if records:
@@ -166,7 +165,7 @@ async def create_dataset(df):
         if isinstance(df, list):
             df = pd.DataFrame(df)
         
-        static_fields = ['name', 'total_experience', "job_title", "profile_id","status", "active"]
+        static_fields = ['name', 'total_experience', "job_title", "profile_id","status", "active", "client_id", "campaign_id"]
         
         df['skills'] = df.apply(process_skills, axis=1)
         df['projects'] = df['projects'].map(process_projects)
@@ -174,7 +173,15 @@ async def create_dataset(df):
         df['certifications'] = df['certifications'].map(lambda x: ", ".join(x))
         df['job_title'] = df['work_history'].map(fetch_job_title)
         df['education'] = df['education'].map(process_education)
+        
         df['type'] = "common"
+        
+        if "campaign_id" not in df.columns:
+            df['campaign_id'] = ""
+        if "client_id" not in df.columns:
+            df['client_id'] = ""
+        elif ("client_id" not in df.columns) or ("campaign_id" not in df.columns):
+            print("Either client id or capaign id should be provided!")
 
         df["learning"] = df['education'] + "\n\n" + df['certifications']
         df["experience"] = df['work_history'] + "\n\n" + df['projects'] + "\n\n" + df['skills']
@@ -200,9 +207,8 @@ async def create_dataset(df):
 index_params = [vector_dense_index_params, vector_sparse_index_params]
 embedding_functions = [dense_embedding]
 
-
-record_count = collection.num_entities
-print(f"The collection '{collection_name}' contains {record_count} records.")
+# record_count = collection.num_entities
+# print(f"The collection '{collection_name}' contains {record_count} records.")
 
 vector_store = Milvus(
             collection_name=collection_name,

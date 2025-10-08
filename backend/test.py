@@ -1,56 +1,29 @@
-from faker import Faker
-import random
-import csv
+from pymilvus import connections, utility
+import os
+import logging
 
-fake = Faker("en_IN")  # Indian-style names
-domains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "rediffmail.com"]
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def make_email(name):
-    """
-    Turn a full name into a plausible email local-part.
-    """
-    parts = name.lower().replace(".", "").split()
-    # keep only alphabetic chars in each part
-    parts = ["".join(ch for ch in p if ch.isalpha()) for p in parts]
-    if not parts:
-        local = fake.user_name()
-    else:
-        first = parts[0]
-        last = parts[1] if len(parts) > 1 else ""
-        num = str(random.randint(1, 99))
+# Milvus connection parameters
+uri = os.environ['MILVUS_URI']
+user = os.environ['MILVUS_USER']
+password = os.environ['MILVUS_PASSWORD']
+collection_name = os.environ['MILVUS_COLLECTION']
+token = f"{user}:{password}"
 
-        patterns = [
-            "{first}.{last}",
-            "{first}{last}",
-            "{first}_{last}",
-            "{first}{num}",
-            "{first}.{num}{last}"
-        ]
-        pattern = random.choice(patterns)
-        local = pattern.format(first=first, last=last, num=num).strip("._")
+# Connect to Milvus
+connections.connect(
+    uri=uri,
+    user=user,
+    password=password,
+    token=token
+)
 
-    domain = random.choice(domains)
-    return f"{local}@{domain}"
-
-def generate_emails(n=100):
-    emails = []
-    for _ in range(n):
-        name = fake.name()  # e.g., "Rajesh Kumar"
-        email = make_email(name)
-        emails.append(email)
-    return emails
-
-if __name__ == "__main__":
-    emails = generate_emails(100)
-
-    # Save to CSV
-    with open("emails.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Email"])
-        for e in emails:
-            writer.writerow([e])
-    print("Saved 100 emails to emails.csv")
-
-    # Also print to console
-    for e in emails:
-        print(e)
+# Check if the collection exists and drop it
+if utility.has_collection(collection_name):
+    utility.drop_collection(collection_name)
+    logger.info(f"Collection '{collection_name}' has been deleted.")
+else:
+    logger.info(f"Collection '{collection_name}' does not exist.")

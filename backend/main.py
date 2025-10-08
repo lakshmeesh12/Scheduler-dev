@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from login import LoginHandler
 from calendar_ops import CalendarHandler
-from event import EventScheduler
+from event import EventScheduler, BulkEventTrackerResponse
 from pymongo import MongoClient
 from pydantic import BaseModel
 from typing import Optional, List, Dict
@@ -20,6 +20,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
+from datetime import datetime, timedelta
 
 
 app = FastAPI()
@@ -466,6 +467,27 @@ async def track_event(session_id: str):
             )
         return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
     except Exception as e:
+        return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
+    
+@app.get("/bulk-event-tracker/{campaign_id}", response_model=BulkEventTrackerResponse)
+async def track_bulk_events(campaign_id: str):
+    """
+    Retrieve and track all scheduled events for a specific campaign.
+    
+    Args:
+        campaign_id: Campaign identifier
+    
+    Returns:
+        JSON response with details of all events, including candidate and panel responses
+    """
+    try:
+        event_scheduler = EventScheduler()
+        result = await event_scheduler.track_bulk_events(campaign_id)
+        return JSONResponse(status_code=200, content=result)
+    except HTTPException as e:
+        return JSONResponse({"error": str(e.detail)}, status_code=e.status_code)
+    except Exception as e:
+        logger.error(f"Server error: {str(e)}")
         return JSONResponse({"error": f"Server error: {str(e)}"}, status_code=500)
     
 class EventUpdateRequest(BaseModel):
@@ -938,106 +960,274 @@ async def list_collections():
 import pandas as pd
 import io
 
-# Expected columns in the Excel/CSV file
-EXPECTED_COLUMNS = [
-    "S.no", "Candidate Name", "Mobile Number", "Email Id", "Total Experience",
-    "Company", "CTC", "ECTC", "Offer in Hand", "Notice", "Current Location",
-    "Preferred Location", "Availability for interview"
-]
+# # Expected columns in the Excel/CSV file
+# EXPECTED_COLUMNS = [
+#     "S.no", "Candidate Name", "Mobile Number", "Email Id", "Total Experience",
+#     "Company", "CTC", "ECTC", "Offer in Hand", "Notice", "Current Location",
+#     "Preferred Location", "Availability for interview"
+# ]
 
-@app.post("/import-excel/{campaign_id}")
-async def import_excel(campaign_id: str, file: UploadFile = File(...)):
-    try:
-        # Validate file type
-        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
-            raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed")
+# @app.post("/import-excel/{campaign_id}")
+# async def import_excel(campaign_id: str, file: UploadFile = File(...)):
+#     try:
+#         # Validate file type
+#         if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+#             raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed")
 
-        # Read file content
-        content = await file.read()
-        file_content = io.BytesIO(content)
+#         # Read file content
+#         content = await file.read()
+#         file_content = io.BytesIO(content)
 
-        # Read Excel or CSV
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(file_content)
-        else:
-            df = pd.read_excel(file_content)
+#         # Read Excel or CSV
+#         if file.filename.endswith('.csv'):
+#             df = pd.read_csv(file_content)
+#         else:
+#             df = pd.read_excel(file_content)
 
-        # Validate columns
-        if not all(col in df.columns for col in EXPECTED_COLUMNS):
-            raise HTTPException(status_code=400, detail="File does not match the required template")
+#         # Validate columns
+#         if not all(col in df.columns for col in EXPECTED_COLUMNS):
+#             raise HTTPException(status_code=400, detail="File does not match the required template")
 
-        # Prepare data for MongoDB
-        records = []
-        for _, row in df.iterrows():
-            candidate_data = {
-                "candidate_id": str(uuid.uuid4()),
-                "campaign_id": campaign_id,
-                "s_no": row.get("S.no"),
-                "candidate_name": row.get("Candidate Name"),
-                "mobile_number": row.get("Mobile Number"),
-                "email_id": row.get("Email Id"),
-                "total_experience": row.get("Total Experience"),
-                "company": row.get("Company"),
-                "ctc": row.get("CTC"),
-                "ectc": row.get("ECTC"),
-                "offer_in_hand": row.get("Offer in Hand"),
-                "notice": row.get("Notice"),
-                "current_location": row.get("Current Location"),
-                "preferred_location": row.get("Preferred Location"),
-                "availability_for_interview": row.get("Availability for interview"),
-                "created_at": datetime.now(pytz.UTC)
-            }
-            records.append(candidate_data)
+#         # Prepare data for MongoDB
+#         records = []
+#         for _, row in df.iterrows():
+#             candidate_data = {
+#                 "candidate_id": str(uuid.uuid4()),
+#                 "campaign_id": campaign_id,
+#                 "s_no": row.get("S.no"),
+#                 "candidate_name": row.get("Candidate Name"),
+#                 "mobile_number": row.get("Mobile Number"),
+#                 "email_id": row.get("Email Id"),
+#                 "total_experience": row.get("Total Experience"),
+#                 "company": row.get("Company"),
+#                 "ctc": row.get("CTC"),
+#                 "ectc": row.get("ECTC"),
+#                 "offer_in_hand": row.get("Offer in Hand"),
+#                 "notice": row.get("Notice"),
+#                 "current_location": row.get("Current Location"),
+#                 "preferred_location": row.get("Preferred Location"),
+#                 "availability_for_interview": row.get("Availability for interview"),
+#                 "created_at": datetime.now(pytz.UTC)
+#             }
+#             records.append(candidate_data)
 
-        # Insert into MongoDB
-        if records:
-            result = db["excel_imports"].insert_many(records)
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "File imported successfully",
-                    "inserted_count": len(result.inserted_ids),
-                    "campaign_id": campaign_id
-                }
-            )
-        else:
-            raise HTTPException(status_code=400, detail="No valid records found in the file")
+#         # Insert into MongoDB
+#         if records:
+#             result = db["excel_imports"].insert_many(records)
+#             return JSONResponse(
+#                 status_code=200,
+#                 content={
+#                     "message": "File imported successfully",
+#                     "inserted_count": len(result.inserted_ids),
+#                     "campaign_id": campaign_id
+#                 }
+#             )
+#         else:
+#             raise HTTPException(status_code=400, detail="No valid records found in the file")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
-@app.get("/retrieve-excel/{campaign_id}")
-async def retrieve_excel(campaign_id: str):
-    try:
-        # Query MongoDB for records matching the campaign_id
-        records = list(db["excel_imports"].find({"campaign_id": campaign_id}, {"_id": 0}))  # Exclude MongoDB _id field
+# @app.get("/retrieve-excel/{campaign_id}")
+# async def retrieve_excel(campaign_id: str):
+#     try:
+#         # Query MongoDB for records matching the campaign_id
+#         records = list(db["excel_imports"].find({"campaign_id": campaign_id}, {"_id": 0}))  # Exclude MongoDB _id field
         
-        # Convert datetime fields to ISO strings for JSON serialization
-        for record in records:
-            if "created_at" in record and isinstance(record["created_at"], datetime):
-                record["created_at"] = record["created_at"].isoformat()
+#         # Convert datetime fields to ISO strings for JSON serialization
+#         for record in records:
+#             if "created_at" in record and isinstance(record["created_at"], datetime):
+#                 record["created_at"] = record["created_at"].isoformat()
         
-        if not records:
-            return JSONResponse(
-                status_code=200,
-                content={
-                    "message": "No records found for the given campaign ID",
-                    "campaign_id": campaign_id,
-                    "records": []
-                }
-            )
+#         if not records:
+#             return JSONResponse(
+#                 status_code=200,
+#                 content={
+#                     "message": "No records found for the given campaign ID",
+#                     "campaign_id": campaign_id,
+#                     "records": []
+#                 }
+#             )
 
-        return JSONResponse(
-            status_code=200,
-            content={
-                "message": "Records retrieved successfully",
-                "campaign_id": campaign_id,
-                "records": records,
-                "record_count": len(records)
-            }
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error retrieving records: {str(e)}")
+#         return JSONResponse(
+#             status_code=200,
+#             content={
+#                 "message": "Records retrieved successfully",
+#                 "campaign_id": campaign_id,
+#                 "records": records,
+#                 "record_count": len(records)
+#             }
+#         )
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error retrieving records: {str(e)}")
+    
+# class ExcelRecordWithResumeStatus(BaseModel):
+#     candidate_id: str
+#     candidate_name: str
+#     mobile_number: str
+#     email_id: str
+#     total_experience: str
+#     company: str
+#     ctc: str
+#     ectc: str
+#     offer_in_hand: str
+#     notice: str
+#     current_location: str
+#     preferred_location: str
+#     availability_for_interview: str
+#     created_at: str
+#     has_resume: bool
+#     resume_profile_id: Optional[str] = None
+
+# class ResumeWithExcelStatus(BaseModel):
+#     profile_id: str
+#     email: str
+#     name: Optional[str] = None
+#     created_at: str
+#     has_excel_record: bool
+#     excel_candidate_id: Optional[str] = None
+
+# class ExcelResumeResponse(BaseModel):
+#     message: str
+#     campaign_id: str
+#     excel_records: list[ExcelRecordWithResumeStatus]
+#     excel_record_count: int
+#     resumes: list[ResumeWithExcelStatus]
+#     resume_count: int
+#     timestamp: str
+
+# @app.get("/retrieve-excel-with-resume-status/{campaign_id}")
+# def retrieve_excel_with_resume_status(campaign_id: str, client_id: Optional[str] = None):
+#     """
+#     Retrieve Excel records and resumes for a specific campaign with bidirectional status checking
+    
+#     Args:
+#         campaign_id: Campaign identifier
+#         client_id: Optional client identifier
+    
+#     Returns:
+#         JSON response with Excel records and resumes, including their respective availability status
+#     """
+#     start_time = datetime.now()
+    
+#     try:
+#         # Input validation
+#         if not campaign_id:
+#             message = "Campaign ID is required"
+#             logger.error(message)
+#             raise HTTPException(status_code=400, detail=message)
+
+#         # Prepare query for resumes
+#         query = {"campaign_id": campaign_id}
+#         if client_id:
+#             query["client_id"] = client_id
+
+#         # Fetch resumes from MongoDB using PyMongo
+#         resumes = list(db['profiles'].find(
+#             query,
+#             {"_id": 0, "email": 1, "profile_id": 1, "name": 1, "processed_at": 1}
+#         ))
+        
+#         # Create a mapping of email to resume profile_id
+#         email_to_resume = {resume.get("email", "").lower(): resume.get("profile_id", "") for resume in resumes}
+
+#         # Fetch Excel records
+#         excel_records = list(db["excel_imports"].find(
+#             {"campaign_id": campaign_id},
+#             {"_id": 0}
+#         ))
+
+#         # Create a mapping of email to Excel candidate_id
+#         email_to_excel = {record.get("email_id", "").lower(): record.get("candidate_id", "") for record in excel_records}
+
+#         # Process Excel records with resume status
+#         processed_excel_records = []
+#         for record in excel_records:
+#             # Convert datetime fields to ISO strings
+#             if "created_at" in record and isinstance(record["created_at"], datetime):
+#                 record["created_at"] = record["created_at"].isoformat()
+
+#             # Convert mobile_number and other fields to string to handle integer or None values
+#             mobile_number = str(record.get("mobile_number", "")) if record.get("mobile_number") is not None else ""
+
+#             # Check if resume exists for this email
+#             email = record.get("email_id", "").lower()
+#             has_resume = email in email_to_resume
+#             resume_profile_id = email_to_resume.get(email)
+
+#             processed_record = ExcelRecordWithResumeStatus(
+#                 candidate_id=str(record.get("candidate_id", "")),
+#                 candidate_name=str(record.get("candidate_name", "")),
+#                 mobile_number=mobile_number,
+#                 email_id=str(record.get("email_id", "")),
+#                 total_experience=str(record.get("total_experience", "")),
+#                 company=str(record.get("company", "")),
+#                 ctc=str(record.get("ctc", "")),
+#                 ectc=str(record.get("ectc", "")),
+#                 offer_in_hand=str(record.get("offer_in_hand", "")),
+#                 notice=str(record.get("notice", "")),
+#                 current_location=str(record.get("current_location", "")),
+#                 preferred_location=str(record.get("preferred_location", "")),
+#                 availability_for_interview=str(record.get("availability_for_interview", "")),
+#                 created_at=str(record.get("created_at", "")),
+#                 has_resume=has_resume,
+#                 resume_profile_id=str(resume_profile_id) if resume_profile_id else None
+#             )
+#             processed_excel_records.append(processed_record)
+
+#         # Process resumes with Excel record status
+#         processed_resumes = []
+#         for resume in resumes:
+#             # Convert datetime fields to ISO strings
+#             if "processed_at" in resume and isinstance(resume["processed_at"], datetime):
+#                 resume["processed_at"] = resume["processed_at"].isoformat()
+
+#             # Check if Excel record exists for this email
+#             email = resume.get("email", "").lower()
+#             has_excel_record = email in email_to_excel
+#             excel_candidate_id = email_to_excel.get(email)
+
+#             processed_resume = ResumeWithExcelStatus(
+#                 profile_id=str(resume.get("profile_id", "")),
+#                 email=str(resume.get("email", "")),
+#                 name=str(resume.get("name", "")) if resume.get("name") else None,
+#                 created_at=str(resume.get("processed_at", "")),
+#                 has_excel_record=has_excel_record,
+#                 excel_candidate_id=str(excel_candidate_id) if excel_candidate_id else None
+#             )
+#             processed_resumes.append(processed_resume)
+
+#         # Calculate execution time
+#         execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+#         # Prepare response
+#         response_data = {
+#             "message": f"Successfully retrieved {len(processed_excel_records)} Excel records and {len(processed_resumes)} resumes with bidirectional status",
+#             "campaign_id": campaign_id,
+#             "excel_records": processed_excel_records,
+#             "excel_record_count": len(processed_excel_records),
+#             "resumes": processed_resumes,
+#             "resume_count": len(processed_resumes),
+#             "timestamp": start_time.isoformat(),
+#             "execution_time_ms": round(execution_time_ms, 2)
+#         }
+
+#         logger.info(f"Retrieved {len(processed_excel_records)} Excel records and {len(processed_resumes)} resumes for campaign_id: {campaign_id}, client_id: {client_id} in {execution_time_ms:.2f}ms")
+
+#         return response_data
+
+#     except HTTPException:
+#         raise
+#     except Exception as err:
+#         exc_type, exc_obj, exc_tb = sys.exc_info()
+#         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+#         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+#         logger.error(f"Failed to retrieve Excel records and resumes with status: {message}")
+        
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Error retrieving records: {str(err)}"
+#         )
     
 @app.get("/candidate/{candidate_id}")
 async def fetch_candidate(candidate_id: str):
@@ -1261,14 +1451,14 @@ async def get_employees():
             status_code=500,
             detail=f"Error retrieving employees: {str(err)}"
         )
-
+    
 
     
 #Bharadwaj
 
 import ast
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 import json
 import logging
@@ -1284,6 +1474,10 @@ import hashlib
 from io import BytesIO
 import aiofiles
 import concurrent
+from bson import ObjectId
+import httpx
+import pandas as pd
+from pydantic import BaseModel
 import uvicorn
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
@@ -1291,19 +1485,18 @@ from fastapi.responses import JSONResponse
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile, BackgroundTasks, Query, status
+from db.milvus.config import create_dataset, process_skills, vector_store
+from resume_processor import Resume
 from utils.chatgpt import run_chatgpt, emb_text
 from db.mongo.config import db as mongo_db
 from utils.parser import DocumentParser
 from utils.helper import compute_duration
-from process import AggregatedScore, GenericSkillMatcher, MatchingResponse, ResumeProcessor, SkillPriority, create_skill_matcher, get_skill_match_details, process_all_files, process_file
+from process import AggregatedScore, GenericSkillMatcher, JDProcessor, JobDescription, MatchingResponse, ResumeProcessor, SkillMatchDetails, SkillPriority, create_skill_matcher, get_skill_match_details, process_all_files, process_file
 from utils.prompt_templates.chunking_template import ChunkingPromptTemplate
 from utils.prompt_templates.job_description_template import JobDescriptionTemplate
-from motor.motor_asyncio import AsyncIOMotorClient
-from resume_processor import Resume
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
-from process import JDProcessor, create_skill_matcher, get_skill_match_details, JobDescription, SkillMatchDetails, AggregatedScore, MatchingResponse
-from db.mongo.config import db as mongo_db
+from utils.prompt_templates.search_preprocessing_template import SearchProcessTemplate
+from utils.prompt_templates.search_route_template import QueryRoutePromptTemplate
+
 
 load_dotenv("./.env")
 os.environ['HUGGINGFACE_HUB_DISABLE_SYMLINKS'] = '1'
@@ -1336,6 +1529,7 @@ logger.addHandler(console_handler)
 
 
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  
@@ -1349,10 +1543,148 @@ def ping():
     return {"message": "pong"}
 
 
-mongo_client = AsyncIOMotorClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017"))
 processor = Resume()
+@app.post("/upload-resume/{campaign_id}")
+async def upload_resumes(
+    files: List[UploadFile] = File(...),
+    campaign_id: Optional[str] = None,
+    client_id: Optional[str] = None
+):
+    """
+    Upload and process multiple resume files (PDF or DOCX) synchronously in-memory.
+    
+    Args:
+        files: List of uploaded files
+        campaign_id: Optional campaign identifier
+        client_id: Optional client identifier
+    
+    Returns:
+        JSON response with processing results
+    """
+    
+    # Input validation
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="No files provided"
+        )
+    
+    if len(files) > processor.MAX_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many files. Maximum allowed: {processor.MAX_FILES}"
+        )
 
-async def process_resumes_background(file_paths: List[Tuple[bytes: str]], uploaded_files_info: List[Dict]):
+    # Ensure client_id and campaign_id are strings or empty strings
+    client_id = client_id if client_id is not None else ""
+    campaign_id = campaign_id if campaign_id is not None else ""
+
+    if not (client_id or campaign_id):
+        message = "Either client_id or campaign_id needs to be provided" 
+        logger.error(message)
+        return JSONResponse(content={"message": message}, status_code=400)  # Changed to 400 for consistency
+
+    # Validate each file
+    validation_errors = []
+    valid_files = []
+    
+    for file in files:
+        validation_result = processor.validate_file(file)
+        if not validation_result["valid"]:
+            validation_errors.append({
+                "filename": file.filename,
+                "error": validation_result["error"]
+            })
+        else:
+            valid_files.append(file)
+    
+    if validation_errors:
+        return JSONResponse(
+            content={
+                "message": "Some files failed validation",
+                "errors": validation_errors,
+                "valid_files_count": len(valid_files)
+            },
+            status_code=400
+        )
+    
+    if not valid_files:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid files to process"
+        )
+    
+    try:
+        # Process files in-memory (no saving to disk)
+        saved_files = []
+        uploaded_files_info = []
+        
+        for file in valid_files:
+            content = await file.read()
+            checksum = hashlib.sha256(content).hexdigest()
+            saved_files.append((file.filename, content))  # Store as (filename, bytes)
+            uploaded_files_info.append(
+                {
+                    "file_name": file.filename,
+                    "file_hash": checksum,
+                    "file_type": file.content_type
+                }
+            )
+        
+        if not saved_files:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to process any files"
+            )
+        
+        # Process resumes synchronously
+        logger.info(f"Starting processing of {len(saved_files)} files")
+        result = await processor.process_resumes(saved_files, client_id=client_id, campaign_id=campaign_id)
+        
+        # Check if result contains 'success_data'
+        if 'success_data' not in result.get('stats', {}):
+            logger.error("Result dictionary missing 'success_data' key")
+            raise HTTPException(
+                status_code=500,
+                detail="Error processing resumes: Invalid response structure from processor"
+            )
+        
+        dataset = await create_dataset(result['stats']['success_data'])  # Use provided create_dataset
+        insertion = vector_store.add_documents(dataset, partition=campaign_id)  # Milvus insertion
+        if insertion:
+            logger.info("Inserted data to Milvus")
+
+        # Convert datetime and ObjectId objects to strings in the result
+        for profile in result["stats"]["parsed_content"].values():
+            if "processed_at" in profile and isinstance(profile["processed_at"], datetime):
+                profile["processed_at"] = profile["processed_at"].isoformat()
+            if "_id" in profile and isinstance(profile["_id"], ObjectId):
+                profile["_id"] = str(profile["_id"])
+        
+        response_data = {
+            "message": result["message"],
+            "stats": result["stats"],
+            "session_id": str(hashlib.md5(str(saved_files).encode()).hexdigest()),
+            "matching_results": result["stats"]["parsed_content"]
+        }
+        
+        return JSONResponse(
+            content=response_data,
+            status_code=200
+        )
+
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Failed to process resumes: {message}")
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing resumes: {str(err)}"
+        )
+
+async def process_resumes_background(file_paths: List[Tuple[bytes: str]], campaign_id: str,  uploaded_files_info: List[Dict]):
     """Background task to process resumes"""
     try:
         logger.info(f"Starting background processing of {len(file_paths)} files")
@@ -1389,9 +1721,19 @@ async def process_resumes_background(file_paths: List[Tuple[bytes: str]], upload
         
         if chunked:
             try:
+                for rec in chunked:
+                    rec['campaign_id'] = campaign_id
+
                 logger.info("inserting profiles in database...")
                 inserted = await mongo_db['profiles'].insert_many(chunked)
                 logger.info(f"Successfully inserted {len(inserted.inserted_ids)} profiles into database")
+
+                logger.info("Inseting profiles into Milvus database...")
+                df = pd.DataFrame(chunked)
+                dataset = await create_dataset(chunked)
+                insertion = vector_store.add_documents(dataset, partition_key_field=campaign_id)
+                if insertion:
+                    logger.info("Successfully inserted data into milvus")
             except Exception as err:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -1407,185 +1749,441 @@ async def process_resumes_background(file_paths: List[Tuple[bytes: str]], upload
         logger.error(f"Background processing failed: {message}")
     finally:
         # Cleanup temporary files
-        processor.cleanup_files(file_paths)
         logger.info("Cleanup completed")
-
-
-class UploadResponse(BaseModel):
-    message: str
-    session_id: str
-    matching_results: MatchingResponse
-
-class UploadResponse(BaseModel):
-    message: str
-    session_id: str
-    matching_results: MatchingResponse
-
-class UploadResponse(BaseModel):
-    message: str
-    session_id: str
-    matching_results: MatchingResponse
-
-class UploadResponse(BaseModel):
-    message: str
-    session_id: str
-    matching_results: MatchingResponse
 
 class UploadResponse(BaseModel):
     message: str
     session_id: str
     matching_results: dict
-from fastapi.responses import StreamingResponse, JSONResponse
-def _ndjson(obj: dict) -> bytes:
-    return (json.dumps(obj, default=str) + "\n").encode("utf-8")
-
-
-def _ndjson(data: dict) -> str:
-    return json.dumps(data) + "\n"
-
-@app.post("/upload-resumes")
-async def upload_resumes(files: List[UploadFile] = File(...)):
+ 
+@app.post("/upload-resumes-v2/{campaign_id}")
+async def upload_resumes(
+    files: List[UploadFile] = File(...),
+    campaign_id: Optional[str] = None,
+    client_id: Optional[str] = None
+):
     """
-    Upload and process multiple resume files (PDF or DOCX) with async, in-memory pipeline.
-    Results stream back as NDJSON with progress updates for each file.
+    Upload and process multiple resume files (PDF or DOCX) synchronously
+   
+    Args:
+        files: List of uploaded files
+   
+    Returns:
+        JSON response with processing results
     """
-  
-
+   
     # Input validation
     if not files:
-        raise HTTPException(status_code=400, detail="No files provided")
-
+        raise HTTPException(
+            status_code=400,
+            detail="No files provided"
+        )
+   
     if len(files) > processor.MAX_FILES:
         raise HTTPException(
             status_code=400,
-            detail=f"Too many files. Maximum allowed: {processor.MAX_FILES}",
+            detail=f"Too many files. Maximum allowed: {processor.MAX_FILES}"
         )
 
+    if not (client_id or campaign_id):
+        message = "Either client_id or campaign_id needs to be provided" 
+        logger.error(message)
+        return JSONResponse(content={"message": message}, status=402)
+    client_id=client_id if client_id else ""
+    campaign_id=campaign_id if campaign_id else ""
+
+    # Validate each file
     validation_errors = []
     valid_files = []
+   
     for file in files:
-        vr = processor.validate_file(file)
-        if not vr["valid"]:
-            validation_errors.append({"filename": file.filename, "error": vr["error"]})
+        validation_result = processor.validate_file(file)
+        if not validation_result["valid"]:
+            validation_errors.append({
+                "filename": file.filename,
+                "error": validation_result["error"]
+            })
         else:
             valid_files.append(file)
-
-    if validation_errors and not valid_files:
-        return {
-            "message": "All files failed validation",
-            "errors": validation_errors,
-            "valid_files_count": 0,
-        }
-
-    # Read all file bytes in-memory (concurrently)
+   
+    if validation_errors:
+        return JSONResponse(
+            content={
+                "message": "Some files failed validation",
+                "errors": validation_errors,
+                "valid_files_count": len(valid_files)
+            },
+            status_code=400
+        )
+   
+    if not valid_files:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid files to process"
+        )
+   
     try:
-        async def _read_file(f: UploadFile):
-            content = await f.read()
-            return (f.filename, content)
+        # Save uploaded files
+        saved_files = []
+        uploaded_files_info = []
+       
+        for file in valid_files:
+            content = await file.read()
+            saved_path = "resumes/" + file.filename
+            saved_files.append((file.filename, content))
+            checksum = hashlib.sha256(content).hexdigest()
+            uploaded_files_info.append(
+                {
+                    "file_name": file.filename,
+                    "file_path": saved_path,
+                    "file_content": content,
+                    "file_hash": checksum,
+                    "file_type": file.content_type
+                }
+            )
+       
+        if not saved_files:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to save any files"
+            )
+       
+    
+        # Process resumes synchronously
+        logger.info(f"Starting processing of {len(saved_files)} files")
+        result = await processor.process_resumes(saved_files, campaign_id=campaign_id, client_id=client_id)
+        
+        # Check if result contains 'success_data'
+        if 'success_data' not in result.get('stats', {}):
+            logger.error("Result dictionary missing 'success_data' key")
+            raise HTTPException(
+                status_code=500,
+                detail="Error processing resumes: Invalid response structure from processor"
+            )
+        
+        
+        dataset = await create_dataset(result['stats']['success_data'])
+        insertion = vector_store.add_documents(dataset, partition=campaign_id)
+        if insertion:
+            logger.info("Inserted data to Milvus")
 
-        read_tasks = [asyncio.create_task(_read_file(f)) for f in valid_files]
-        saved_files = await asyncio.gather(*read_tasks)
+        # Convert datetime and ObjectId objects to strings in the result
+        for profile in result["stats"]["parsed_content"].values():
+            if "processed_at" in profile and isinstance(profile["processed_at"], datetime):
+                profile["processed_at"] = profile["processed_at"].isoformat()
+            if "_id" in profile and isinstance(profile["_id"], ObjectId):
+                profile["_id"] = str(profile["_id"])
+        
+        response_data = {
+            "message": result["message"],
+            "stats": result["stats"],
+            "session_id": str(hashlib.md5(str(saved_files).encode()).hexdigest()),
+            "matching_results": result["stats"]["parsed_content"]
+        }
+        
+        return JSONResponse(
+            content=response_data,
+            status_code=200
+        )
+
     except Exception as err:
-        raise HTTPException(status_code=500, detail=f"Failed to read uploads: {err}")
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Failed to process resumes: {message}")
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing resumes: {str(err)}"
+        )
+    
+class ResumeResponse(BaseModel):
+    message: str
+    resumes: list
+    total_count: int
+    campaign_id: Optional[str]
+    client_id: Optional[str]
+    timestamp: str
 
-    # Stream results with progress updates
-    async def event_stream():
-        total_files = len(saved_files)
-        session_id = hashlib.md5(str([name for name, _ in saved_files]).encode()).hexdigest()
-        yield _ndjson({
-            "type": "session",
-            "data": {
-                "session_id": session_id,
-                "valid_files": total_files,
-                "validation_errors": validation_errors
-            }
-        })
-
-        processed_count = 0
-        for idx, (filename, content) in enumerate(saved_files, 1):
-            # Send progress event before processing each file
-            progress_percent = round((processed_count / total_files) * 100)
-            yield _ndjson({
-                "type": "progress",
-                "data": {
-                    "filename": filename,
-                    "progress_percent": progress_percent,
-                    "file_number": idx,
-                    "total_files": total_files
-                }
-            })
-
-            async for chunk in processor.process_resumes_stream([(filename, content)]):
-                if chunk.get("type") == "item" and isinstance(chunk.get("data", {}).get("_id"), ObjectId):
-                    chunk["data"]["_id"] = str(chunk["data"]["_id"])
-                yield _ndjson(chunk)
-
-            processed_count += 1
-            # Send updated progress after processing
-            progress_percent = round((processed_count / total_files) * 100)
-            yield _ndjson({
-                "type": "progress",
-                "data": {
-                    "filename": filename,
-                    "progress_percent": progress_percent,
-                    "file_number": idx,
-                    "total_files": total_files
-                }
-            })
-
-    return StreamingResponse(event_stream(), media_type="application/x-ndjson")
-
-
-class Employee(BaseModel):
-    name: str
-    title: str
-
-@app.get("/employees", response_model=List[Employee])
-async def get_employees():
+@app.get("/retrieve-resumes/{campaign_id}")
+async def retrieve_resumes(
+    campaign_id: Optional[str] = None,
+    client_id: Optional[str] = None
+):
     """
-    Retrieve a list of employees with their names and titles from the profiles collection.
+    Retrieve all resumes associated with a specific campaign or client
+    
+    Args:
+        campaign_id: Optional campaign identifier
+        client_id: Optional client identifier
     
     Returns:
-        List of employees with name and title (designation from work_history[0])
+        JSON response with list of resumes and metadata
     """
-    logger = logging.getLogger(__name__)
+    start_time = datetime.now()
     
     try:
-        # Use the provided mongo_db configuration
-        collection = mongo_db["profiles"]
-        
-        # Query all active profiles and select only name and work_history
-        profiles = collection.find({"active": True}, {"name": 1, "work_history": 1, "_id": 0})
-        
-        employees = []
-        async for profile in profiles:
-            # Extract designation from work_history[0] if it exists
-            title = (
-                profile["work_history"][0]["designation"]
-                if "work_history" in profile and profile["work_history"] and len(profile["work_history"]) > 0
-                else "Unknown"
+        # Input validation
+        if not (client_id or campaign_id):
+            message = "Either client_id or campaign_id needs to be provided"
+            logger.error(message)
+            raise HTTPException(
+                status_code=400,
+                detail=message
             )
-            employees.append({
-                "name": profile.get("name", "Unknown"),
-                "title": title
+
+        # Prepare query
+        query = {}
+        if campaign_id:
+            query["campaign_id"] = campaign_id
+        if client_id:
+            query["client_id"] = client_id
+
+        # Fetch resumes from MongoDB
+        resumes_cursor = mongo_db['profiles'].find(
+            query,
+            {"_id": 0}  # Exclude MongoDB ObjectId from results
+        )
+        resumes = await resumes_cursor.to_list(length=None)
+        
+        # Process resumes
+        processed_resumes = []
+        for resume in resumes:
+            # Convert datetime and ObjectId to strings
+            if "processed_at" in resume and isinstance(resume["processed_at"], datetime):
+                resume["processed_at"] = resume["processed_at"].isoformat()
+            if "profile_id" in resume and isinstance(resume["profile_id"], ObjectId):
+                resume["profile_id"] = str(resume["profile_id"])
+                
+            processed_resumes.append(resume)
+
+        # Calculate execution time
+        execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+        response_data = {
+            "message": f"Successfully retrieved {len(processed_resumes)} resumes",
+            "resumes": processed_resumes,
+            "total_count": len(processed_resumes),
+            "campaign_id": campaign_id,
+            "client_id": client_id,
+            "timestamp": start_time.isoformat(),
+            "execution_time_ms": round(execution_time_ms, 2)
+        }
+
+        logger.info(f"Retrieved {len(processed_resumes)} resumes for campaign_id: {campaign_id}, client_id: {client_id} in {execution_time_ms:.2f}ms")
+        
+        return ResumeResponse(**response_data)
+
+    except HTTPException:
+        raise
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Failed to retrieve resumes: {message}")
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving resumes: {str(err)}"
+        )
+
+@app.post("/upload-resumes/{campaign_id}")
+async def upload_resumes(
+    background_tasks: BackgroundTasks,
+    campaign_id: str,
+    files: List[UploadFile] = File(...)
+):
+    """
+    Upload and process multiple resume files (PDF or DOCX)
+    
+    Args:
+        background_tasks: FastAPI background tasks
+        files: List of uploaded files
+    
+    Returns:
+        JSON response with status and message
+    """
+    
+    # Input validation
+    if not files:
+        raise HTTPException(
+            status_code=400, 
+            detail="No files provided"
+        )
+    
+    if len(files) > processor.MAX_FILES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Too many files. Maximum allowed: {processor.MAX_FILES}"
+        )
+    
+    # Validate each file
+    validation_errors = []
+    valid_files = []
+    
+    for file in files:
+        validation_result = processor.validate_file(file)
+        if not validation_result["valid"]:
+            validation_errors.append({
+                "filename": file.filename,
+                "error": validation_result["error"]
             })
+        else:
+            valid_files.append(file)
+    
+    if validation_errors:
+        return JSONResponse(
+            content={
+                "message": "Some files failed validation",
+                "errors": validation_errors,
+                "valid_files_count": len(valid_files)
+            },
+            status_code=400
+        )
+    
+    if not valid_files:
+        raise HTTPException(
+            status_code=400,
+            detail="No valid files to process"
+        )
+    
+    try:
+        # Save uploaded files
+        saved_files = []
+        save_errors = []
+        uploaded_files_info = []
         
-        if not employees:
-            logger.info("No active employees found in profiles collection")
-            return []
+        for file in valid_files:
+            content = await file.read()
+            # saved_path = await upload_file_to_s3(file_path+file_name, "upload_resume", user_id)
+            saved_path = "resumes/"+ file.filename
+            saved_files.append((content, file.filename))
+            checksum = hashlib.sha256(content).hexdigest()
+            uploaded_files_info.append(
+                {
+                    "file_name": file.filename,
+                    "file_path": saved_path,
+                    "file_content": content,
+                    "file_hash": checksum,
+                    "file_type": file.content_type
+                }
+            )
         
-        logger.info(f"Retrieved {len(employees)} employees")
-        return employees
+        if not saved_files:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to save any files"
+            )
+        
+        # Add background task for processing
+        background_tasks.add_task(
+            process_resumes_background,
+            saved_files,
+            campaign_id,
+            uploaded_files_info
+        )
+        
+        logger.info(f"Started background processing for {len(saved_files)} files")
+        
+        response_data = {
+            "message": "Files uploaded successfully. Processing started in background.",
+            "uploaded_files_count": len(saved_files),
+            "status": "PROCESSING"
+        }
+        
+        if save_errors:
+            response_data["save_errors"] = save_errors
+        
+        return JSONResponse(
+            content=response_data,
+            status_code=202
+        )
     
     except Exception as err:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
-        logger.error(f"Failed to retrieve employees: {message}")
+        logger.error(f"Failed to process resumes: {str(message)}")
+        
+        # Cleanup any saved files on error
+        if 'saved_files' in locals():
+            processor.cleanup_files(saved_files)
+        
         raise HTTPException(
             status_code=500,
-            detail=f"Error retrieving employees: {str(err)}"
+            detail=f"Error processing resumes: {str(err)}"
         )
+
+
+@app.get("/fetch-job-titles/{campaign_id}")
+async def fetch_job_titles(campaign_id: str):
+    try:
+        job_titles = await mongo_db['profiles'].find(
+            {"campaign_id": campaign_id}, 
+            {"_id": 0, "job_title": 1}
+        ).to_list()
+
+        job_titles = [x for x in job_titles if x]
+
+        message = "Successfully fetched job_titles!" if job_titles else "No Job Titles found!"    
+        logger.info(message)
+        return JSONResponse(content={"message": message, "body": job_titles}, status_code=200)
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"failed to fetch job titiles: {message}")
+        return JSONResponse(content={"message": "failed to fetch job titiles", "body": []}, status_code=500)
+
+
+@app.get("/fetch-certifications/{campaign_id}")
+async def fetch_certs(campaign_id: str):
+    try:
+        certs = []
+        async for rec in mongo_db['profiles'].find({"campaign_id": campaign_id}, {"_id": 0, "certifications": 1}):
+            if isinstance(rec, list):
+                certs.extend(rec)
+            elif isinstance(rec, str):
+                certs.append(rec)
+
+        message = "Successfully fetched certs!" if certs else "No Job Titles found!"    
+        logger.info(message)
+        return JSONResponse(content={"message": message, "body": certs}, status_code=200)
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"failed to fetch job titiles: {message}")
+        return JSONResponse(content={"message": "failed to fetch job titiles", "body": []}, status_code=500)
+
+
+@app.get("/fetch-skills/{campaign_id}")
+async def fetch_skills(campaign_id: str):
+    try:
+        skills = await mongo_db['profiles'].find(
+            {"campaign_id": campaign_id}, 
+            {"_id": 0, "primary_skills": 1, "secondary_skills": 1}
+        ).to_list()
+
+        skill_list = set()
+        for category, subskill in skills['primary_skills'].items():
+            for x,y in subskill.items():
+                skill_list.update(y)
+        
+        for category, subskill in skills['secondary_skills'].items():
+            for x,y in subskill.items():
+                skill_list.update(y)
+
+        message = "Successfully fetched skills!" if skill_list else "No Job Titles found!"    
+        logger.info(message)
+        return JSONResponse(content={"message": message, "body": list(skill_list)}, status_code=200)
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"failed to fetch job titiles: {message}")
+        return JSONResponse(content={"message": "failed to fetch job titiles", "body": []}, status_code=500)
+
 
 @app.get("/profiles")
 async def get_profiles():
@@ -1685,7 +2283,7 @@ async def upload_jd(
             jd = await run_chatgpt(prompt.prompt, system_prompt, 0.5)
             jd = json.loads(jd.replace("```", '').lstrip("python\n"))
             logger.info("Contents extracted from job description")
-            jd.update({"job_description": jd_text, "job_id": str(uuid4())})
+            jd.update({"job_description": jd_text, "campaign_id": str(uuid4())})
             inserted = await mongo_db['job'].insert_one(jd)
             logger.info("jd info inserted in database")
             return JSONResponse(content={"message":"Successfully uploaded Job Desciption"}, status_code=200)
@@ -1697,15 +2295,16 @@ async def upload_jd(
         return JSONResponse(content={"message": "Error processing Job Description"}, status_code=500)
 
 
-@app.post("/find-match")
+@app.post("/find-match/{campaign_id}")
 async def get_matching_resumes(
-    job_description: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None)
+    campaign_id: str = None,
+    job_description: str = Form(None),
+    client_id: Optional[str] = None
 ):
     """
     Find matching resumes for a specific job with aggregated scoring
     
-    Formula: (score1 + (0.5 * score2) + (0.5 * score3) + score4) / 4
+    Formula: (score1 + (0.5 * score2) + (0.5 * score3) + score4) / 3 + additional_score
     Where:
     - score1: primary_skills vs primary_skills
     - score2: primary_skills vs secondary_skills  
@@ -1715,52 +2314,62 @@ async def get_matching_resumes(
     start_time = datetime.now()
     
     try:
-        # Validate job_id format
-        if not job_description and not file:
-            raise HTTPException(status_code=400, detail="Either job_description or file upload is required and cannot be empty")
+        if not(client_id or campaign_id):
+            return JSONResponse(content={"message": "Either of valid client_id or campaign_id needs to be provided"}, status=402)
+
+        # Validate campaign_id format
+        if not job_description:
+            raise HTTPException(status_code=400, detail="job description is required and cannot be empty")
         data = []
         jd_text = job_description or ""
-        if file:
-            temp_dir = tempfile.gettempdir().replace(r"\\","/")
-            contents = await file.read()
-            filename = file.filename
-            temp_file = os.path.join(temp_dir, filename)
-            with open(temp_file, "wb") as f:
-                f.write(contents)
+        # if file.filename:
+        #     temp_dir = tempfile.gettempdir().replace(r"\\","/")
+        #     contents = await file.read()
+        #     filename = file.filename
+        #     temp_file = os.path.join(temp_dir, filename)
+        #     with open(temp_file, "wb") as f:
+        #         f.write(contents)
 
-            if filename.endswith('.txt'):
-                file_stats = contents.decode('utf-8')
-            elif filename.endswith('.pdf') or filename.endswith('.docx'):
-                parser = DocumentParser(max_workers=1, batch_size=1)
-                file_stats = await parser.parse_bytes(contents)
-                file_data = file_stats['stats']['parsed_content']
+        #     if filename.endswith('.txt'):
+        #         file_stats = contents.decode('utf-8')
+        #     elif filename.endswith('.pdf') or filename.endswith('.docx'):
+        #         parser = DocumentParser(max_workers=1, batch_size=1)
+        #         file_stats = await parser.parse_bytes(contents)
+        #         file_data = file_stats['stats']['parsed_content']
                 
-                for k,v in file_data.items():
-                    await process_file(k, v, data)
-            else:
-                return JSONResponse(content={"message": "Unsupported file type"}, status_code=400)
+        #         for k,v in file_data.items():
+        #             await process_file(k, v, data)
+        #     else:
+        #         return JSONResponse(content={"message": "Unsupported file type"}, status_code=400)
 
-            os.remove(temp_file)
-            filename = filename.split(".")[0] + "doctags.txt"
+        #     os.remove(temp_file)
+        #     filename = filename.split(".")[0] + "doctags.txt"
 
-            with open("temp/"+filename, "r", encoding="utf-8") as f:
-                jd_data = f.read()
-            jd_text += "\n" + jd_data 
+        #     with open("temp/"+filename, "r", encoding="utf-8") as f:
+        #         jd_data = f.read()
+        #     jd_text += "\n" + jd_data 
 
         jd = {}
         if jd_text:
             prompt = JobDescriptionTemplate(jd_text)
             system_prompt = "You are expert in extracting content from job description"
-            jd = await run_chatgpt(prompt.prompt, system_prompt, 0.5)
+            jd = await run_chatgpt(prompt.prompt, system_prompt, 0.4)
             jd = json.loads(jd.replace("```", '').lstrip("python\n"))
             logger.info("Contents extracted from job description")
             print(jd.keys())
+            additional_info = "\n".join(jd["other_specifications"]) if jd.get("other_specifications") else job_description
+            print(additional_info)
+            
+            # prompt = QueryRoutePromptTemplate(additional_info)
+            # response = await run_chatgpt(prompt.user_prompt, prompt.system_prompt, 0.4)
+            # expr = json.loads(response)
+            # expr = expr['expr']
+            # print(expr)
 
         # Initialize matcher and results
         matcher = GenericSkillMatcher()
         matches = []
 
-        
         # Validate job description structure
         required_job_fields = ['job_title', 'primary_skills', 'secondary_skills']
         missing_job_fields = [field for field in required_job_fields if field not in jd]
@@ -1771,14 +2380,15 @@ async def get_matching_resumes(
             )
         
         job_title = jd.get('job_title', '')
-        if job_title:    
+        if job_title:
             logger.info(f"Processing job: {job_title}")
         else:
             logger.info("No job title available")
 
         # Fetch matching resumes
         resumes_cursor = mongo_db['profiles'].find({
-            "active": True
+            "active": True,
+            "campaign_id": campaign_id
         }, {"_id": 0})
         resumes = await resumes_cursor.to_list(length=None)
         
@@ -1793,6 +2403,22 @@ async def get_matching_resumes(
                 execution_time_ms=0.0
             )
         
+        expr = f"(campaign_id=='{campaign_id}')" if campaign_id else f"(client_id=='{client_id}')"
+
+        result = vector_store.similarity_search_with_relevance_scores(
+            query=additional_info,
+            partition_name=campaign_id,
+            expr=expr,
+            k=100,
+            score_threshold=0.4
+        )
+
+        res = {}
+
+        for rec, score in result:
+            key = rec.metadata['profile_id']
+            res.update({key: score})
+
         # Process each resume
         for resume in resumes:
             try:
@@ -1819,9 +2445,15 @@ async def get_matching_resumes(
                 score4 = matcher.calculate_skill_match_score(
                     resume['secondary_skills'], jd['secondary_skills']
                 )['overall_score']
+
+                # additional fields score
+                profile_id = resume.get("profile_id")
+                add_score = res.get(profile_id, 0)
                 
                 # Calculate aggregated score using the specified formula
-                aggregated_score = (score1 + score2 + score3 + score4)/3
+                aggregated_score = ((0.8 * score1) + (0.15 * score2) + (0.025 * score3) + (0.025 * score4))
+                aggregated_score = (0.7 * aggregated_score) + (0.3 * add_score)
+                aggregated_score = min(1, aggregated_score)
                 
                 # Get detailed skill matching for primary vs primary and secondary vs secondary
                 primary_vs_primary = get_skill_match_details(
@@ -1838,11 +2470,12 @@ async def get_matching_resumes(
                     profile_id=str(resume.get('profile_id', '')),
                     aggregated_score=round(aggregated_score, 2),
                     score_breakdown={
-                        'primary_vs_primary': round(score1, 2),
-                        'primary_vs_secondary': round(score2, 2),
-                        'secondary_vs_primary': round(score3, 2),
-                        'secondary_vs_secondary': round(score4, 2)
+                        'primary_vs_primary': min(1,round(score1, 2)),
+                        'primary_vs_secondary': min(1, round(score2, 2)),
+                        'secondary_vs_primary': min(1, round(score3, 2)),
+                        'secondary_vs_secondary': min(1, round(score4, 2))
                     },
+                    vector_score=round(add_score, 2),
                     primary_vs_primary=primary_vs_primary,
                     secondary_vs_secondary=secondary_vs_secondary
                 )
@@ -1877,10 +2510,11 @@ async def get_matching_resumes(
     except HTTPException:
         raise
     except Exception as err:
+        print(err)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
-        logger.error(f"Unexpected error in get_matching_resumes: {err}")
+        logger.error(f"Unexpected error in get_matching_resumes: {message}")
         raise HTTPException(
             status_code=500, 
             detail=f"Internal server error: {str(err)}"
@@ -1951,6 +2585,511 @@ async def get_resume_score(
     except Exception as e:
         logger.error(f"Error calculating resume score: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+class SearchObj(BaseModel):
+    search_query: Optional[str] = ""
+    filters: Optional[Dict]
+    page_size: Optional[int] = 10
+    page_number: Optional[int] = 1
+
+
+@app.post("/ai/query-match/{client_id}")
+async def search_profiles(
+    client_id: str,
+    body: SearchObj
+    ):
+    """
+    The `search_profiles` function retrieves profiles based on a search query, filters, and pagination
+    parameters, utilizing sparse and dense embeddings for search retrieval.
+    
+    :param search_query: The `search_query` parameter is a required string input that represents the
+    search term used for vector search. It is used to search for profiles based on the provided query
+    :type search_query: str
+    :param filters: The `filters` parameter in the `search_profiles` function is used to provide
+    additional filtering criteria for the search operation. It is a JSON field where you can specify
+    specific conditions or constraints that the search results must satisfy. These filters can be used
+    to narrow down the search results based on various attributes or
+    :type filters: Optional[str]
+    :param top_k: The `top_k` parameter specifies the number of top profiles to be fetched in the search
+    results. In the provided code snippet, the default value for `top_k` is set to 3, meaning that by
+    default, the search operation will return the top 3 matching profiles. This parameter can
+    :type top_k: Optional[int]
+    :param page_size: The `page_size` parameter in the `search_profiles` function specifies the number
+    of records per page to be displayed in the search results. In the provided code snippet, the default
+    value for `page_size` is set to 5, meaning that by default, the search results will display 5
+    :type page_size: Optional[int]
+    :param page_number: The `page_number` parameter in the `search_profiles` function represents the
+    page number of the current result set. It is used for pagination to determine which page of results
+    to fetch. The default value for `page_number` is set to 1, meaning that by default, the function
+    will return
+    :type page_number: Optional[int]
+    :return: The `search_profiles` function returns a JSONResponse containing information about the
+    matching records found based on the search query and filters provided. The response includes a
+    message indicating the number of matching records found, the actual records retrieved, the total
+    count of results, the page size, and the page number.
+    """
+    try:
+        data = body.model_dump()
+        search_query = data['search_query']
+        filters = data.get('filters', {})
+        page_size = data.get('page_size', 10)
+        page_number = data.get('page_number', 1)
+
+        # with open("./search_config.json", "r") as fc:
+        #     config = json.load(fc)
+        expr = f"client_id=={client_id}" if client_id else ""
+        f = lambda x: f"%' OR content like '%".join(x).lstrip("%' OR ")+"%'"
+        qfilters = filters if filters else {}
+        if qfilters:
+            for k,v in qfilters.items():
+                if k=="experience":
+                    v = re.sub("[^0-9]+", " ", v).strip()
+                    if len(v)==2:
+                        mn, mx = v.split()
+                        expr += f" and (total_experience<={mx} and total_experience>={mn})"
+                    elif len(v)==1:
+                        expr += f" and total_experience>={v}"
+
+                elif k=="job_title":
+                    expr  += f" and (job_title=='{v}')"
+                
+                elif k=="certifications":
+                    v = [""] + v
+                    v = f(v)
+                    expr += f" and ({v})"
+                
+                elif k=="skills":
+                    v = [""] + v
+                    v = f(v)
+                    expr += f" and ({v})"
+
+        search_query = search_query.strip("\n").strip()
+        search_query = re.sub(r"[^A-Za-z0-9]+", " ", search_query)
+        add_filters = []
+        if not (search_query or qfilters):
+            logger.info("Please Enter query or value in filter to search!")
+            result = {}
+            n = 0
+            return JSONResponse(
+                content={
+                    "message": f"Please Enter query or value in filter to search!",
+                    "body":result,
+                    "result_count": n,
+                    "page_size": page_size,
+                    "page_number": page_number
+                },
+                status_code=200
+            )
+
+        if search_query:
+            template = SearchProcessTemplate(search_query)
+            add_filters = await run_chatgpt(template.user_prompt, template.system_prompt, 0.3)
+            print("additional filters", add_filters)
+
+        if type(add_filters)==str:
+            add_filters = add_filters.lstrip("```json\n").lstrip("```python").rstrip("```")
+            add_filters = ast.literal_eval(add_filters)
+            
+        # template = QueryRoutePromptTemplate(search_query, qfilters)
+        # response = await run_chatgpt(template.user_prompt, template.system_prompt, 0.45)
+        # response = response.strip("```json\n")
+        # response = response.strip("```python")
+        # response = response.strip("```")
+        # filters = json.loads(response)
+
+        ref_search = re.sub(r"[^A-Za-z0-9]+", " ", search_query).lower()
+        expr = f"{expr.lstrip(' and ')}"
+        expr = re.sub(r'[$#*&+]', "", expr).lower()
+
+        logger.info(expr)
+        logger.info("Filters generated ...")  
+
+        offset = (page_number - 1) * page_size
+        limit = page_size
+        
+        logger.info("Loading search...")
+
+        score_threshold = 0.4
+        if not expr:
+            score_threshold = 0.6
+        print(expr)
+        if (ref_search or expr):
+            result = vector_store.similarity_search_with_relevance_scores(
+                query=ref_search,
+                k=100,
+                score_threshold=score_threshold,
+                expr=expr
+            )
+        
+        else:
+            result = []
+         
+        results = {}
+
+        for rec, score in result:
+            key = rec.metadata['profile_id']
+            content = rec.page_content
+            total_experience = rec.metadata['total_experience']
+            job_title = rec.metadata['job_title']
+            if key not in results:
+                results[key] = {
+                    "name": rec.metadata['name'],
+                    "score":score, 
+                    "content": content, 
+                    "total_experience": total_experience,
+                    "job_title": job_title,
+                    "profile_id": rec.metadata['profile_id']
+                }
+            else:
+                results[key]['name'] = rec.metadat['name']
+                results[key]['profile_id'] = rec.metadata['profile_id']
+                results[key]['score'] = max(score, results[key]['score'])
+                results[key]['total_experience'] = rec.metadata['total_experience']
+                results[key]['content'] = content
+                results[key]['job_title'] = job_title
+
+        profile_ids = [rec for rec in results]
+
+        find_params = {
+            "profile_id": {
+                "$in": profile_ids
+            }
+        }
+        
+        result = {k: results[k] for k in profile_ids}
+            
+        logger.info("fetched users data.")
+        profile_ids = list(result.keys())
+        project_params = {"_id": 0, "profile_id": 1, "primary_skills": 1, "secondary_skills": 1}
+
+        async for rec in mongo_db['profiles'].find(find_params, project_params):
+            results[rec['profile_id']]['primary_skills'] = rec['primary_skills']
+            results[rec['profile_id']]['secondary_skills'] = rec['secondary_skills']
+        
+        n = len(result)
+        
+        if result:
+            logger.info(f"fetched records from mongodb")
+            result = sorted(result.values(), key=lambda x: -x['score'])
+            result = result[offset: offset+limit]
+            print(result)
+
+        logger.info(f"Found {n} matching records!")
+
+        return JSONResponse(
+            content={
+                "message": f"Found {n} matching records!",
+                "body":result,
+                "result_count": n,
+                "page_size": page_size,
+                "page_number": page_number
+            },
+            status_code=200
+        )
+
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Search failed: {message}")
+        traceback_details = traceback.extract_tb(exc_tb)
+        # Print the formatted stack trace
+        print("Exception occurred:")
+        for filename, lineno, function, text in traceback_details:
+            print(f"  File: {filename}, line {lineno}, in {function}")
+            print(f"    {text}")
+        # logger.error(f"Search failed: {e}")
+        raise HTTPException(status_code=500, detail="Search operation failed")
+    
+EXPECTED_COLUMNS = [
+    "S.no", "Candidate Name", "Mobile Number", "Email Id", "Total Experience",
+    "Company", "CTC", "ECTC", "Offer in Hand", "Notice", "Current Location",
+    "Preferred Location", "Availability for interview"
+]
+
+@app.post("/import-excel/{campaign_id}")
+async def import_excel(campaign_id: str, file: UploadFile = File(...)):
+    """
+    Import Excel or CSV file into the excel_imports collection in the rms database
+    
+    Args:
+        campaign_id: Campaign identifier
+        file: Uploaded Excel or CSV file
+    
+    Returns:
+        JSON response with import status
+    """
+    try:
+        # Validate file type
+        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+            raise HTTPException(status_code=400, detail="Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed")
+
+        # Read file content
+        content = await file.read()
+        file_content = io.BytesIO(content)
+
+        # Read Excel or CSV
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file_content)
+        else:
+            df = pd.read_excel(file_content)
+
+        # Validate columns
+        if not all(col in df.columns for col in EXPECTED_COLUMNS):
+            raise HTTPException(status_code=400, detail="File does not match the required template")
+
+        # Prepare data for MongoDB
+        records = []
+        for _, row in df.iterrows():
+            candidate_data = {
+                "candidate_id": str(uuid.uuid4()),
+                "campaign_id": campaign_id,
+                "s_no": str(row.get("S.no", "")) if pd.notna(row.get("S.no")) else "",
+                "candidate_name": str(row.get("Candidate Name", "")) if pd.notna(row.get("Candidate Name")) else "",
+                "mobile_number": str(row.get("Mobile Number", "")) if pd.notna(row.get("Mobile Number")) else "",
+                "email_id": str(row.get("Email Id", "")) if pd.notna(row.get("Email Id")) else "",
+                "total_experience": str(row.get("Total Experience", "")) if pd.notna(row.get("Total Experience")) else "",
+                "company": str(row.get("Company", "")) if pd.notna(row.get("Company")) else "",
+                "ctc": str(row.get("CTC", "")) if pd.notna(row.get("CTC")) else "",
+                "ectc": str(row.get("ECTC", "")) if pd.notna(row.get("ECTC")) else "",
+                "offer_in_hand": str(row.get("Offer in Hand", "")) if pd.notna(row.get("Offer in Hand")) else "",
+                "notice": str(row.get("Notice", "")) if pd.notna(row.get("Notice")) else "",
+                "current_location": str(row.get("Current Location", "")) if pd.notna(row.get("Current Location")) else "",
+                "preferred_location": str(row.get("Preferred Location", "")) if pd.notna(row.get("Preferred Location")) else "",
+                "availability_for_interview": str(row.get("Availability for interview", "")) if pd.notna(row.get("Availability for interview")) else "",
+                "created_at": datetime.now(pytz.UTC)
+            }
+            records.append(candidate_data)
+
+        # Insert into MongoDB
+        if records:
+            result = await mongo_db["excel_imports"].insert_many(records)
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "File imported successfully",
+                    "inserted_count": len(result.inserted_ids),
+                    "campaign_id": campaign_id
+                }
+            )
+        else:
+            raise HTTPException(status_code=400, detail="No valid records found in the file")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    
+@app.get("/retrieve-excel/{campaign_id}")
+async def retrieve_excel(campaign_id: str):
+    """
+    Retrieve Excel records from the excel_imports collection in the rms database
+    
+    Args:
+        campaign_id: Campaign identifier
+    
+    Returns:
+        JSON response with Excel records
+    """
+    try:
+        # Query MongoDB for records matching the campaign_id
+        cursor = mongo_db["excel_imports"].find({"campaign_id": campaign_id}, {"_id": 0})
+        records = await cursor.to_list(length=None)
+        
+        # Convert datetime fields to ISO strings for JSON serialization
+        for record in records:
+            if "created_at" in record and isinstance(record["created_at"], datetime):
+                record["created_at"] = record["created_at"].isoformat()
+        
+        if not records:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "No records found for the given campaign ID",
+                    "campaign_id": campaign_id,
+                    "records": []
+                }
+            )
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Records retrieved successfully",
+                "campaign_id": campaign_id,
+                "records": records,
+                "record_count": len(records)
+            }
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving records: {str(e)}")
+    
+class ExcelRecordWithResumeStatus(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    mobile_number: str
+    email_id: str
+    total_experience: str
+    company: str
+    ctc: str
+    ectc: str
+    offer_in_hand: str
+    notice: str
+    current_location: str
+    preferred_location: str
+    availability_for_interview: str
+    created_at: str
+    has_resume: bool
+    resume_profile_id: Optional[str] = None
+
+class ResumeWithExcelStatus(BaseModel):
+    profile_id: str
+    email: str
+    name: Optional[str] = None
+    created_at: str
+    has_excel_record: bool
+    excel_candidate_id: Optional[str] = None
+
+class ExcelResumeResponse(BaseModel):
+    message: str
+    campaign_id: str
+    excel_records: list[ExcelRecordWithResumeStatus]
+    excel_record_count: int
+    resumes: list[ResumeWithExcelStatus]
+    resume_count: int
+    timestamp: str
+    execution_time_ms: float
+
+@app.get("/retrieve-excel-with-resume-status/{campaign_id}")
+async def retrieve_excel_with_resume_status(campaign_id: str, client_id: Optional[str] = None):
+    """
+    Retrieve Excel records and resumes for a specific campaign with bidirectional status checking
+    
+    Args:
+        campaign_id: Campaign identifier
+        client_id: Optional client identifier
+    
+    Returns:
+        JSON response with Excel records and resumes, including their respective availability status
+    """
+    start_time = datetime.now()
+    
+    try:
+        # Input validation
+        if not campaign_id:
+            message = "Campaign ID is required"
+            logger.error(message)
+            raise HTTPException(status_code=400, detail=message)
+
+        # Prepare query for resumes
+        query = {"campaign_id": campaign_id}
+        if client_id:
+            query["client_id"] = client_id
+
+        # Fetch resumes from MongoDB using AsyncIOMotorClient
+        resumes_cursor = mongo_db['profiles'].find(
+            query,
+            {"_id": 0, "email": 1, "profile_id": 1, "name": 1, "processed_at": 1}
+        )
+        resumes = await resumes_cursor.to_list(length=None)
+        
+        # Create a mapping of email to resume profile_id
+        email_to_resume = {resume.get("email", "").lower(): resume.get("profile_id", "") for resume in resumes}
+
+        # Fetch Excel records from MongoDB using AsyncIOMotorClient
+        excel_cursor = mongo_db["excel_imports"].find(
+            {"campaign_id": campaign_id},
+            {"_id": 0}
+        )
+        excel_records = await excel_cursor.to_list(length=None)
+
+        # Create a mapping of email to Excel candidate_id
+        email_to_excel = {record.get("email_id", "").lower(): record.get("candidate_id", "") for record in excel_records}
+
+        # Process Excel records with resume status
+        processed_excel_records = []
+        for record in excel_records:
+            # Convert datetime fields to ISO strings
+            if "created_at" in record and isinstance(record["created_at"], datetime):
+                record["created_at"] = record["created_at"].isoformat()
+
+            # Convert fields to string to handle integer or None values
+            processed_record = ExcelRecordWithResumeStatus(
+                candidate_id=str(record.get("candidate_id", "")),
+                candidate_name=str(record.get("candidate_name", "")),
+                mobile_number=str(record.get("mobile_number", "")) if record.get("mobile_number") is not None else "",
+                email_id=str(record.get("email_id", "")),
+                total_experience=str(record.get("total_experience", "")),
+                company=str(record.get("company", "")),
+                ctc=str(record.get("ctc", "")),
+                ectc=str(record.get("ectc", "")),
+                offer_in_hand=str(record.get("offer_in_hand", "")),
+                notice=str(record.get("notice", "")),
+                current_location=str(record.get("current_location", "")),
+                preferred_location=str(record.get("preferred_location", "")),
+                availability_for_interview=str(record.get("availability_for_interview", "")),
+                created_at=str(record.get("created_at", "")),
+                has_resume=record.get("email_id", "").lower() in email_to_resume,
+                resume_profile_id=str(email_to_resume.get(record.get("email_id", "").lower())) if record.get("email_id", "").lower() in email_to_resume else None
+            )
+            processed_excel_records.append(processed_record)
+
+        # Process resumes with Excel record status
+        processed_resumes = []
+        for resume in resumes:
+            # Convert datetime fields to ISO strings
+            if "processed_at" in resume and isinstance(resume["processed_at"], datetime):
+                resume["processed_at"] = resume["processed_at"].isoformat()
+
+            # Check if Excel record exists for this email
+            email = resume.get("email", "").lower()
+            has_excel_record = email in email_to_excel
+            excel_candidate_id = email_to_excel.get(email)
+
+            processed_resume = ResumeWithExcelStatus(
+                profile_id=str(resume.get("profile_id", "")),
+                email=str(resume.get("email", "")),
+                name=str(resume.get("name", "")) if resume.get("name") else None,
+                created_at=str(resume.get("processed_at", "")),
+                has_excel_record=has_excel_record,
+                excel_candidate_id=str(excel_candidate_id) if excel_candidate_id else None
+            )
+            processed_resumes.append(processed_resume)
+
+        # Calculate execution time
+        execution_time_ms = (datetime.now() - start_time).total_seconds() * 1000
+
+        # Prepare response
+        response_data = ExcelResumeResponse(
+            message=f"Successfully retrieved {len(processed_excel_records)} Excel records and {len(processed_resumes)} resumes with bidirectional status",
+            campaign_id=campaign_id,
+            excel_records=processed_excel_records,
+            excel_record_count=len(processed_excel_records),
+            resumes=processed_resumes,
+            resume_count=len(processed_resumes),
+            timestamp=start_time.isoformat(),
+            execution_time_ms=round(execution_time_ms, 2)
+        )
+
+        logger.info(f"Retrieved {len(processed_excel_records)} Excel records and {len(processed_resumes)} resumes for campaign_id: {campaign_id}, client_id: {client_id} in {execution_time_ms:.2f}ms")
+
+        # Convert Pydantic model to dictionary for JSON serialization
+        return JSONResponse(
+            status_code=200,
+            content=response_data.dict()  # Use .dict() for Pydantic v1 or .model_dump() for Pydantic v2
+        )
+
+    except HTTPException:
+        raise
+    except Exception as err:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        message = f"{fname} : Line no {exc_tb.tb_lineno} - {exc_type} : {err}"
+        logger.error(f"Failed to retrieve Excel records and resumes with status: {message}")
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving records: {str(err)}"
+        )
+
 
 
 if __name__ == "__main__":

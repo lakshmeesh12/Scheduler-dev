@@ -10,6 +10,7 @@ import base64
 import os
 import json
 import markdown
+from pydantic import BaseModel
 
 mongo_client = MongoClient("mongodb://localhost:27017")
 db = mongo_client["calendar_app"]
@@ -18,6 +19,25 @@ calendar_handler = CalendarHandler()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pydantic models
+class EventDetails(BaseModel):
+    event_id: str
+    status: str
+    candidate: Optional[Dict[str, str]] = None  # {name, email, recent_designation}
+    position: Optional[str] = None
+    scheduled_time: Optional[Dict[str, Any]] = None  # {date, start_time, duration}
+    virtual: Optional[bool] = None
+    candidate_response: Optional[Dict[str, Any]] = None  # {name, email, response, response_time}
+    panel_response_status: Optional[Dict[str, Any]] = None  # {summary: {accepted, declined, tentative, pending}, responses: [{name, email, role, response, response_time}]}
+
+class BulkEventTrackerResponse(BaseModel):
+    message: str
+    campaign_id: str
+    events: List[EventDetails]
+    event_count: int
+    timestamp: str
+    execution_time_ms: float
 
 class EventScheduler:
     def __init__(self):
@@ -615,6 +635,242 @@ class EventScheduler:
             logger.error(f"Unexpected error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
         
+    async def track_bulk_events(self, campaign_id: str) -> Dict[str, Any]:
+        """
+        Track all scheduled events for a given campaign, including attendee responses and event details.
+        
+        Args:
+            campaign_id: ID of the campaign
+        
+        Returns:
+            Dictionary containing details of all events and their attendee responses for UI rendering
+        """
+        # FIX 1: Renamed 'start_time' to 'function_start_time' to avoid conflict.
+        function_start_time = datetime.now()
+        try:
+            logger.info(f"Tracking bulk events for campaign_id: {campaign_id}")
+            
+            # Validate campaign
+            campaign = db['campaign-tracker'].find_one({"_id": campaign_id})
+            if not campaign or "Interview" not in campaign:
+                logger.error(f"No campaign or interviews found for campaign_id: {campaign_id}")
+                raise HTTPException(status_code=404, detail="No campaign or interviews found")
+
+            events = []
+            interview_sessions = campaign.get("Interview", [])
+            logger.info(f"Found {len(interview_sessions)} interview sessions for campaign_id: {campaign_id}")
+
+            for session in interview_sessions:
+                if "scheduled_event" not in session or not session["scheduled_event"].get("event_id"):
+                    logger.warning(f"No scheduled event found for session_id: {session.get('session_id')}")
+                    continue
+
+                # Get event details from session
+                event_id = session["scheduled_event"]["event_id"]
+                created_by = session["created_by"]
+                candidate_info = session["scheduled_event"].get("candidate", {})
+                candidate_email = candidate_info.get("email", "Unknown")
+                candidate_name = candidate_info.get("name", candidate_email or "Unknown")
+                recent_designation = candidate_info.get("recent_designation", "Unknown")
+                panel_emails = session["scheduled_event"].get("panel_emails", [])
+                interview_details = session.get("interview_details", {})
+                logger.info(f"Processing event_id: {event_id}, session_id: {session.get('session_id')}, candidate: {candidate_name} ({candidate_email})")
+
+                # Get organizer details
+                organizer = db.users.find_one(
+                    {"user_id": created_by},
+                    {"user_id": 1, "email": 1, "display_name": 1, "access_token": 1, "expires_in": 1, "last_login": 1}
+                )
+                if not organizer or not organizer.get("email"):
+                    logger.error(f"Organizer not found or missing email for created_by: {created_by}")
+                    continue
+
+                # Check access token validity
+                if not organizer.get("access_token"):
+                    logger.error(f"No access token found for organizer: {created_by}")
+                    continue
+                
+                last_login = organizer.get("last_login")
+                expires_in = organizer.get("expires_in", 0)
+                if last_login and expires_in:
+                    expiration_time = last_login + timedelta(seconds=expires_in)
+                    if datetime.utcnow() > expiration_time:
+                        logger.error(f"Access token expired for user: {created_by}")
+                        continue
+
+                # Check if organizer is a personal account
+                personal_domains = ["outlook.com", "hotmail.com", "live.com"]
+                is_personal_account = any(domain in organizer["email"].lower() for domain in personal_domains)
+                if is_personal_account:
+                    logger.warning(f"Organizer {organizer['email']} is a personal account. Teams meeting link may not be available.")
+
+                # Fetch candidate name from rms.profiles
+                if candidate_email:
+                    rms_db = MongoClient("mongodb://localhost:27017")["rms"]
+                    candidate_profile = rms_db.profiles.find_one({"email": candidate_email}, {"name": 1})
+                    if candidate_profile and candidate_profile.get("name"):
+                        candidate_name = candidate_profile["name"]
+                        logger.info(f"Fetched candidate name: {candidate_name} for email: {candidate_email}")
+                    else:
+                        logger.warning(f"No profile found for candidate email: {candidate_email}")
+
+                # Fetch event details from Microsoft Graph API
+                try:
+                    event = await self.calendar_handler.get_event(created_by, event_id)
+                    logger.info(f"Event retrieved successfully, event_id: {event_id}")
+                except Exception as e:
+                    logger.error(f"Graph API error fetching event {event_id}: {str(e)}")
+                    continue
+
+                # Extract event details
+                subject = event.get("subject")
+                start = event.get("start", {})
+                end = event.get("end", {})
+                teams_link = event.get("onlineMeeting", {}).get("joinUrl") if event.get("onlineMeeting") else None
+                is_cancelled = event.get("isCancelled", False)
+                status = "CANCELLED" if is_cancelled else "SCHEDULED"
+
+                # Format times using scheduled_event
+                try:
+                    # Validate start and end time formats
+                    start_str = session["scheduled_event"].get("start")
+                    end_str = session["scheduled_event"].get("end")
+                    
+                    # Log raw values for debugging
+                    logger.info(f"Raw start time: {start_str}, end time: {end_str}")
+                    
+                    if not start_str or not end_str:
+                        raise ValueError("Start or end time is missing")
+
+                    # Validate ISO format using regex
+                    iso_regex = r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})$'
+                    if not (re.match(iso_regex, start_str) and re.match(iso_regex, end_str)):
+                        raise ValueError(f"Invalid time format: start={start_str}, end={end_str}")
+
+                    # Parse times, handling 'Z' suffix
+                    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00") if start_str.endswith("Z") else start_str)
+                    end_dt = datetime.fromisoformat(end_str.replace("Z", "+00:00") if end_str.endswith("Z") else end_str)
+                    
+                    # Verify datetime objects
+                    if not (isinstance(start_dt, datetime) and isinstance(end_dt, datetime)):
+                        raise ValueError(f"Parsed times are not datetime objects: start={type(start_dt)}, end={type(end_dt)}")
+
+                    # Ensure end time is after start time
+                    if end_dt <= start_dt:
+                        raise ValueError("End time must be after start time")
+
+                    # Format date and time
+                    date = start_dt.strftime("%B %d, %Y")
+                    # FIX 2: Renamed 'start_time' to 'event_start_time_str' to store the formatted time string.
+                    event_start_time_str = start_dt.strftime("%I:%M:%S %p")
+                    duration = int((end_dt - start_dt).total_seconds() / 60)  # Duration in minutes
+                    logger.info(f"Parsed times: start={start_dt}, end={end_dt}, duration={duration} minutes")
+                except (ValueError, TypeError) as e:
+                    logger.error(f"Error parsing event times for event_id {event_id}: {str(e)}")
+                    date = interview_details.get("date", "Unknown")
+                    event_start_time_str = "Unknown"  # Use the new variable name here as well
+                    duration = interview_details.get("duration", 0)
+
+                # Fetch panel member roles
+                users_db = db.users
+                panel_roles = {}
+                for email in panel_emails:
+                    user = users_db.find_one({"email": email}, {"job_title": 1})
+                    panel_roles[email] = user.get("job_title", "Panel Member") if user else "Panel Member"
+                    logger.info(f"Fetched job_title: {panel_roles[email]} for email: {email}")
+
+                # Extract candidate and panel responses
+                candidate_response = {}
+                panel_responses = []
+                panel_summary = {"accepted": 0, "declined": 0, "tentative": 0, "pending": 0}
+                
+                for attendee in event.get("attendees", []):
+                    email_address = attendee.get("emailAddress", {})
+                    email = email_address.get("address")
+                    response = attendee.get("status", {}).get("response", "none").lower()
+                    response_time = attendee.get("status", {}).get("time")
+                    
+                    formatted_response_time = None
+                    if response_time:
+                        try:
+                            response_dt = datetime.fromisoformat(response_time.replace("Z", "+00:00"))
+                            formatted_response_time = response_dt.strftime("%B %d, %Y, %I:%M %p")
+                        except ValueError:
+                            formatted_response_time = "Unknown"
+
+                    if email == candidate_email:
+                        candidate_response = {
+                            "name": candidate_name,
+                            "email": email,
+                            "response": response.capitalize(),
+                            "response_time": formatted_response_time
+                        }
+                    elif email in panel_emails:
+                        panel_responses.append({
+                            "name": email_address.get("name", email),
+                            "email": email,
+                            "role": panel_roles.get(email, "Panel Member"),
+                            "response": response.capitalize(),
+                            "response_time": formatted_response_time
+                        })
+                        if response == "accepted":
+                            panel_summary["accepted"] += 1
+                        elif response == "declined":
+                            panel_summary["declined"] += 1
+                        elif response == "tentative":
+                            panel_summary["tentative"] += 1
+                        else:
+                            panel_summary["pending"] += 1
+
+                event_details = EventDetails(
+                    event_id=event_id,
+                    status=status,
+                    candidate={
+                        "name": candidate_name,
+                        "email": candidate_email,
+                        "recent_designation": recent_designation
+                    },
+                    position=interview_details.get("title", subject or "Unknown"),
+                    scheduled_time={
+                        "date": date,
+                        "start_time": event_start_time_str, # Use the correct string variable
+                        "duration": duration
+                    },
+                    virtual=bool(teams_link),
+                    candidate_response=candidate_response,
+                    panel_response_status={
+                        "summary": panel_summary,
+                        "responses": panel_responses
+                    }
+                )
+                events.append(event_details)
+
+            # Calculate execution time
+            # FIX 3: Use the original 'function_start_time' datetime object for calculation.
+            execution_time_ms = (datetime.now() - function_start_time).total_seconds() * 1000
+
+            # Prepare response
+            response_data = BulkEventTrackerResponse(
+                message=f"Successfully retrieved {len(events)} events for campaign",
+                campaign_id=campaign_id,
+                events=events,
+                event_count=len(events),
+                # FIX 4: Use the original 'function_start_time' object to get the ISO format.
+                timestamp=function_start_time.isoformat(),
+                execution_time_ms=round(execution_time_ms, 2)
+            )
+
+            logger.info(f"Retrieved {len(events)} events for campaign_id: {campaign_id} in {execution_time_ms:.2f}ms")
+
+            return response_data.dict()
+
+        except HTTPException as e:
+            logger.error(f"HTTPException: {str(e.detail)}, status_code: {e.status_code}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
+        
     async def update_event(self, session_id: str, remove_emails: List[str], add_emails: List[str]) -> Dict[str, Any]:
         """
         Update an existing event by removing and adding invitees, and update panel_emails in the database.
@@ -1171,3 +1427,4 @@ class EventScheduler:
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
+        
