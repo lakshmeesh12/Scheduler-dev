@@ -56,68 +56,70 @@ const AddEmployee = () => {
   };
 
   const handleFileUpload = async (files: FileList) => {
-    const fileArray = Array.from(files).filter(
-      (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".docx")
-    );
+  const fileArray = Array.from(files).filter(
+    (file) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".docx")
+  );
 
-    if (fileArray.length === 0) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload PDF or DOCX files only.",
-        variant: "destructive",
-        className: "text-sm",
-      });
-      return;
-    }
+  if (fileArray.length === 0) {
+    toast({
+      title: "Invalid file type",
+      description: "Please upload PDF or DOCX files only.",
+      variant: "destructive",
+      className: "text-sm",
+    });
+    return;
+  }
 
-    setIsLoading(true);
-    setUploadedFiles((prev) => [...prev, ...fileArray]);
+  setIsLoading(true);
+  setUploadedFiles((prev) => [...prev, ...fileArray]);
+  setUploadProgress(0);
+  setCurrentFile("Initializing...");
 
-    try {
-      const response = await uploadResumes(fileArray, (progress, fileName) => {
-        setUploadProgress(progress);
-        setCurrentFile(fileName);
-      });
+  try {
+    const response = await uploadResumes(fileArray, (progress, fileName, status) => {
+      setUploadProgress(progress);
+      setCurrentFile(fileName ? `Processing ${fileName}: ${status}` : status || "Processing...");
+    });
 
-      toast({
-        title: "Resumes uploaded successfully",
-        description: `Processed ${response.stats.success_count} of ${response.stats.total_count} files successfully. ${
-          response.stats.failure_count > 0
-            ? `${response.stats.failure_count} files failed: ${response.stats.failed_files.join(", ")}`
-            : ""
-        }`,
-        className: "bg-green-600 text-white text-sm",
-      });
+    toast({
+      title: "Resumes uploaded successfully",
+      description: `Processed ${response.stats.success_count} of ${response.stats.total_count} files successfully. ${
+        response.stats.failure_count > 0
+          ? `${response.stats.failure_count} files failed: ${response.stats.failed_files.join(", ")}`
+          : ""
+      }`,
+      className: "bg-green-600 text-white text-sm",
+    });
 
-      if (response.errors && response.errors.length > 0) {
-        response.errors.forEach((error) => {
-          toast({
-            title: `Error processing ${error.filename}`,
-            description: error.error,
-            variant: "destructive",
-            className: "text-sm",
-          });
+    if (response.errors && response.errors.length > 0) {
+      response.errors.forEach((error) => {
+        toast({
+          title: `Error processing ${error.filename}`,
+          description: error.error,
+          variant: "destructive",
+          className: "text-sm",
         });
-      }
-
-      setUploadedFiles([]);
-      setUploadProgress(0);
-      setCurrentFile("");
-      navigate(`/campaign-dashboard/${clientId}`);
-    } catch (err) {
-      toast({
-        title: "Error uploading resumes",
-        description: err instanceof Error ? err.message : "Failed to process resumes.",
-        variant: "destructive",
-        className: "text-sm",
       });
-    } finally {
-      setIsLoading(false);
-      setUploadProgress(0);
-      setCurrentFile("");
     }
-  };
 
+    setUploadedFiles([]);
+    setUploadProgress(0);
+    setCurrentFile("");
+    navigate(`/campaign-dashboard/${clientId}`);
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to process resumes.";
+    toast({
+      title: "Error uploading resumes",
+      description: errorMessage,
+      variant: "destructive",
+      className: "text-sm",
+    });
+    setUploadProgress(100);
+    setCurrentFile("Error occurred");
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleExcelUpload = async (file: File) => {
     if (!file.name.endsWith(".xls") && !file.name.endsWith(".xlsx") && !file.name.endsWith(".csv")) {
       toast({

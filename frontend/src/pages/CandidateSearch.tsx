@@ -1,11 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Plus, Users, Calendar, TrendingUp, UserCheck, Clock, Eye, FileText, MessageSquare, Loader2, User, Building, MapPin, Target, Briefcase, Edit2, X } from "lucide-react";
+import { Search, Plus, Users, Calendar, TrendingUp, UserCheck, Clock, Eye, FileText, MessageSquare, Loader2, User, Building, MapPin, Target, Briefcase, Edit2, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { fetchCampaignById, fetchMatchingResumes, updateCampaignTeam, updateCampaignDetails, HiringCampaign, AggregatedScore, Interview, InterviewRound, retrieveExcel, ExcelRecord } from "@/api";
+import { fetchCampaignById, fetchMatchingResumes, updateCampaignTeam, updateCampaignDetails, HiringCampaign, AggregatedScore, Interview, InterviewRound, fetchExcelWithResumeStatus, ExcelRecordWithResumeStatus, ResumeWithExcelStatus } from "@/api";
 import QChat from "@/components/QChat";
 import {
   Dialog,
@@ -150,6 +151,10 @@ const dummyComments: Comment[] = [
   }
 ];
 
+interface UnifiedCandidate extends ExcelRecordWithResumeStatus {
+  has_excel: boolean;
+}
+
 const CandidateSearch = () => {
   const { clientId, campaignId, jobId } = useParams<{ clientId: string; campaignId: string; jobId: string }>();
   const navigate = useNavigate();
@@ -182,11 +187,10 @@ const CandidateSearch = () => {
     positions: 1,
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const [preScreeningCandidates, setPreScreeningCandidates] = useState<ExcelRecord[]>([]);
+  const [preScreeningCandidates, setPreScreeningCandidates] = useState<UnifiedCandidate[]>([]);
   const [isLoadingPreScreening, setIsLoadingPreScreening] = useState(false);
   const [activeTab, setActiveTab] = useState<"candidatePool" | "interviewStage" | "onboarded">("candidatePool");
   const [searchQuery, setSearchQuery] = useState("");
-  
   const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = useState(false);
   const [searchFilters, setSearchFilters] = useState({
     experience: "",
@@ -196,6 +200,11 @@ const CandidateSearch = () => {
     availability: "",
   });
   const [showFullJD, setShowFullJD] = useState(false);
+  // Pagination states
+  const [candidatePoolPage, setCandidatePoolPage] = useState(1);
+  const [interviewStagePage, setInterviewStagePage] = useState(1);
+  const [onboardedPage, setOnboardedPage] = useState(1);
+  const rowsPerPage = 10;
 
   useEffect(() => {
     if (campaignId) {
@@ -237,10 +246,37 @@ const CandidateSearch = () => {
         setCandidateStatuses(initialStatuses);
       }
 
-      // Fetch pre-screening data
+      // Fetch pre-screening data with resume status
       setIsLoadingPreScreening(true);
-      const excelData = await retrieveExcel(campaignId!);
-      setPreScreeningCandidates(excelData.records);
+      const data = await fetchExcelWithResumeStatus(campaignId!);
+      
+      // Process excel_records
+      const excelRecords: UnifiedCandidate[] = data.excel_records.map(rec => ({ ...rec, has_excel: true }));
+
+      // Process additional resumes without matching excel
+      const additionalResumes: UnifiedCandidate[] = data.resumes.filter(res => !res.has_excel_record).map(res => ({
+        candidate_id: '',
+        candidate_name: res.name || '',
+        mobile_number: '',
+        email_id: res.email,
+        total_experience: '',
+        company: '',
+        ctc: '',
+        ectc: '',
+        offer_in_hand: '',
+        notice: '',
+        current_location: '',
+        preferred_location: '',
+        availability_for_interview: '',
+        created_at: res.created_at,
+        has_resume: true,
+        resume_profile_id: res.profile_id,
+        has_excel: false
+      }));
+
+      // Combine both
+      const unified = [...excelRecords, ...additionalResumes];
+      setPreScreeningCandidates(unified);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load campaign or pre-screening data');
     } finally {
@@ -250,57 +286,44 @@ const CandidateSearch = () => {
   };
 
   const handleCandidateSearch = async () => {
-  if (!selectedCampaign) return;
-  setIsSearchingCandidates(true);
-  setError("");
-  try {
-    const formData = new FormData();
-    formData.append("job_description", selectedCampaign.description);
-    formData.append("job_title", selectedCampaign.jobTitle);
-    
-    // Add custom search query if provided
-    if (searchQuery.trim()) {
-      formData.append("additional_query", searchQuery);
+    if (!selectedCampaign) return;
+    setIsSearchingCandidates(true);
+    setError("");
+    try {
+      const result = await fetchMatchingResumes(selectedCampaign.id, selectedCampaign.description, selectedCampaign.client_id);
+      navigate(`/candidate-search/${campaignId}/results`, {
+        state: {
+          searchResults: result.matching_results.map(candidate => ({ 
+            ...candidate, 
+            aggregated_score: candidate.score_breakdown.primary_vs_primary,
+            campaignId: selectedCampaign.id 
+          })),
+          jobTitle: selectedCampaign.jobTitle,
+          campaignId: selectedCampaign.id,
+          clientId: selectedCampaign.client_id,
+          searchQuery,
+          filters: searchFilters,
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to search candidates');
+    } finally {
+      setIsSearchingCandidates(false);
     }
-    
-    // Add filters if provided
-    Object.entries(searchFilters).forEach(([key, value]) => {
-      if (value.trim()) {
-        formData.append(`filter_${key}`, value);
-      }
-    });
-    
-    const result = await fetchMatchingResumes(formData);
-    navigate(`/candidate-search/${campaignId}/results`, {
-      state: {
-        searchResults: result.matching_results.map(candidate => ({ ...candidate, campaignId: selectedCampaign.id })),
-        jobTitle: selectedCampaign.jobTitle,
-        campaignId: selectedCampaign.id,
-        clientId: selectedCampaign.client_id,
-        searchQuery,
-        filters: searchFilters,
-      },
-    });
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'Failed to search candidates');
-  } finally {
-    setIsSearchingCandidates(false);
-  }
-};
+  };
 
-// Add this helper function to reset search filters:
-const handleResetFilters = () => {
-  setSearchQuery("");
-  setSearchFilters({
-    experience: "",
-    location: "",
-    skills: "",
-    salary: "",
-    availability: "",
-  });
-};
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSearchFilters({
+      experience: "",
+      location: "",
+      skills: "",
+      salary: "",
+      availability: "",
+    });
+  };
 
-  const handleScheduleInterview = (candidate: AggregatedScore | Candidate) => {
+  const handleScheduleInterview = (candidate: AggregatedScore | Candidate | UnifiedCandidate) => {
     if (!selectedCampaign?.id) {
       console.error("handleScheduleInterview: Missing campaign ID", { candidate, campaignId: selectedCampaign?.id });
       setError("Cannot schedule interview: Missing campaign information");
@@ -309,12 +332,13 @@ const handleResetFilters = () => {
     console.log("Scheduling interview for candidate:", { candidate, campaignId: selectedCampaign.id, campaignTitle: selectedCampaign.jobTitle });
     sessionStorage.setItem('campaignId', selectedCampaign.id);
     sessionStorage.setItem('clientId', selectedCampaign.client_id);
-    const profileId = 'resume_id' in candidate ? candidate.resume_id : candidate.profile_id;
+    const profileId = 'resume_id' in candidate ? candidate.resume_id : ('resume_profile_id' in candidate ? candidate.resume_profile_id || candidate.candidate_id : candidate.profile_id);
+    const name = 'resume_name' in candidate ? candidate.resume_name : ('candidate_name' in candidate ? candidate.candidate_name : candidate.name);
     navigate(`/schedule-interview/${profileId}`, {
       state: {
         candidate: {
           profile_id: profileId,
-          name: candidate.name,
+          name: name,
         },
         campaign: {
           campaignId: selectedCampaign.id,
@@ -537,6 +561,16 @@ const handleResetFilters = () => {
     { id: "3", name: "Charlie Chocolate", email: "charlie@example.com", onboardDate: "2025-09-01", status: "Probation" },
   ];
 
+  // Pagination logic
+  const getPaginatedData = <T,>(data: T[], page: number): T[] => {
+    const startIndex = (page - 1) * rowsPerPage;
+    return data.slice(startIndex, startIndex + rowsPerPage);
+  };
+
+  const getTotalPages = (dataLength: number): number => {
+    return Math.ceil(dataLength / rowsPerPage);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 w-full overflow-x-hidden">
       <header className="glass border-b border-white/20 sticky top-0 z-50">
@@ -555,7 +589,6 @@ const handleResetFilters = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {/* Enhanced Search Interface */}
               <div className="flex items-center space-x-2">
                 <div className="relative">
                   <div className="flex items-center space-x-2 bg-white/90 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 shadow-lg">
@@ -574,8 +607,6 @@ const handleResetFilters = () => {
                       {isAdvancedSearchOpen ? "Hide" : "Filters"}
                     </button>
                   </div>
-                  
-                  {/* Advanced Search Filters */}
                   {isAdvancedSearchOpen && (
                     <div className="absolute top-full left-0 mt-2 w-96 bg-white/95 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl p-4 z-40">
                       <h4 className="font-medium text-sm text-gray-800 mb-2">Search Filters</h4>
@@ -598,7 +629,6 @@ const handleResetFilters = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Preferred Location</label>
                           <Input
@@ -608,7 +638,6 @@ const handleResetFilters = () => {
                             onChange={(e) => setSearchFilters({ ...searchFilters, location: e.target.value })}
                           />
                         </div>
-                        
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Key Skills</label>
                           <Input
@@ -618,7 +647,6 @@ const handleResetFilters = () => {
                             onChange={(e) => setSearchFilters({ ...searchFilters, skills: e.target.value })}
                           />
                         </div>
-                        
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Salary Range</label>
                           <Select
@@ -637,7 +665,6 @@ const handleResetFilters = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        
                         <div className="col-span-2">
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Availability</label>
                           <Select
@@ -657,7 +684,6 @@ const handleResetFilters = () => {
                           </Select>
                         </div>
                       </div>
-                      
                       <div className="flex justify-between mt-4 pt-3 border-t">
                         <Button
                           variant="outline"
@@ -675,7 +701,6 @@ const handleResetFilters = () => {
                   )}
                 </div>
               </div>
-              
               <Button 
                 onClick={handleCandidateSearch} 
                 variant="default"
@@ -695,7 +720,6 @@ const handleResetFilters = () => {
                   </>
                 )}
               </Button>
-              
               <Button
                 variant="outline"
                 size="sm"
@@ -849,7 +873,6 @@ const handleResetFilters = () => {
                         </div>
                         <div className="mt-1 flex items-center space-x-2">
                           <p className="text-xs text-muted-foreground line-clamp-1">{selectedCampaign.description}</p>
-                         
                           <Button variant="ghost" size="icon" onClick={() => setShowFullJD(true)}>
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -903,112 +926,112 @@ const handleResetFilters = () => {
                 </div>
               </CardHeader>
             </Card>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                          <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
-                            <CardContent className="p-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-[10px] text-gray-500 uppercase tracking-tight">Total Applied</p>
-                                  <p className="text-sm font-medium text-blue-700">{selectedCampaign.candidatesApplied}</p>
-                                </div>
-                                <Users className="w-4 h-4 text-blue-700" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                          <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
-                            <CardContent className="p-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-[10px] text-gray-500 uppercase tracking-tight">Hired</p>
-                                  <p className="text-sm font-medium text-green-700">{selectedCampaign.candidatesHired}</p>
-                                </div>
-                                <UserCheck className="w-4 h-4 text-green-700" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                          <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
-                            <CardContent className="p-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-[10px] text-gray-500 uppercase tracking-tight">Success Rate</p>
-                                  <p className="text-sm font-medium text-purple-700">
-                                    {selectedCampaign.candidatesApplied > 0 ? Math.round((selectedCampaign.candidatesHired / selectedCampaign.candidatesApplied) * 100) : 0}%
-                                  </p>
-                                </div>
-                                <TrendingUp className="w-4 h-4 text-purple-700" />
-                              </div>
-                            </CardContent>
-                          </Card>
-                          <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
-                            <CardContent className="p-2">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-[10px] text-gray-500 uppercase tracking-tight">Positions Left</p>
-                                  {isEditPositionsMode ? (
-                                    <div className="flex items-center space-x-1">
-                                      <Input
-                                        type="number"
-                                        className="w-12 text-sm font-medium text-orange-700 h-6"
-                                        value={tempCampaignDetails.positions.toString()}
-                                        onChange={(e) => setTempCampaignDetails({ ...tempCampaignDetails, positions: parseInt(e.target.value) || 1 })}
-                                        disabled={isLoading}
-                                      />
-                                      {formErrors.positions && <p className="text-red-500 text-[10px]">{formErrors.positions}</p>}
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleCancelEditCampaign}
-                                        disabled={isLoading}
-                                        className="h-6 text-[10px] px-1.5"
-                                      >
-                                        Cancel
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        onClick={handleSaveCampaignDetails}
-                                        disabled={isLoading}
-                                        className="h-6 text-[10px] px-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                                      >
-                                        Save
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center space-x-1">
-                                      <p className="text-sm font-medium text-orange-700">{selectedCampaign.positions - selectedCampaign.candidatesHired}</p>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setIsEditPositionsMode(true)}
-                                        disabled={isLoading}
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <Edit2 className="w-3 h-3" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                                <Target className="w-4 h-4 text-orange-700" />
-                              </div>
-                            </CardContent>
-                          </Card>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+              <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-tight">Total Applied</p>
+                      <p className="text-sm font-medium text-blue-700">{selectedCampaign.candidatesApplied}</p>
+                    </div>
+                    <Users className="w-4 h-4 text-blue-700" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-tight">Hired</p>
+                      <p className="text-sm font-medium text-green-700">{selectedCampaign.candidatesHired}</p>
+                    </div>
+                    <UserCheck className="w-4 h-4 text-green-700" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-tight">Success Rate</p>
+                      <p className="text-sm font-medium text-purple-700">
+                        {selectedCampaign.candidatesApplied > 0 ? Math.round((selectedCampaign.candidatesHired / selectedCampaign.candidatesApplied) * 100) : 0}%
+                      </p>
+                    </div>
+                    <TrendingUp className="w-4 h-4 text-purple-700" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm">
+                <CardContent className="p-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-tight">Positions Left</p>
+                      {isEditPositionsMode ? (
+                        <div className="flex items-center space-x-1">
+                          <Input
+                            type="number"
+                            className="w-12 text-sm font-medium text-orange-700 h-6"
+                            value={tempCampaignDetails.positions.toString()}
+                            onChange={(e) => setTempCampaignDetails({ ...tempCampaignDetails, positions: parseInt(e.target.value) || 1 })}
+                            disabled={isLoading}
+                          />
+                          {formErrors.positions && <p className="text-red-500 text-[10px]">{formErrors.positions}</p>}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelEditCampaign}
+                            disabled={isLoading}
+                            className="h-6 text-[10px] px-1.5"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveCampaignDetails}
+                            disabled={isLoading}
+                            className="h-6 text-[10px] px-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-1">
+                          <p className="text-sm font-medium text-orange-700">{selectedCampaign.positions - selectedCampaign.candidatesHired}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsEditPositionsMode(true)}
+                            disabled={isLoading}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    <Target className="w-4 h-4 text-orange-700" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
             <div className="mb-6">
               <div className="flex border-b border-gray-200">
                 <button
                   className={`px-4 py-2 text-xs font-semibold ${activeTab === "candidatePool" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
-                  onClick={() => setActiveTab("candidatePool")}
+                  onClick={() => { setActiveTab("candidatePool"); setCandidatePoolPage(1); }}
                 >
                   Candidate Pool ({preScreeningCandidates.length})
                 </button>
                 <button
                   className={`px-4 py-2 text-xs font-semibold ${activeTab === "interviewStage" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
-                  onClick={() => setActiveTab("interviewStage")}
+                  onClick={() => { setActiveTab("interviewStage"); setInterviewStagePage(1); }}
                 >
                   Interview Stage ({getCandidateList(selectedCampaign?.Interview, selectedCampaign?.Interview_Round).length})
                 </button>
                 <button
                   className={`px-4 py-2 text-xs font-semibold ${activeTab === "onboarded" ? "border-b-2 border-blue-600 text-blue-600" : "text-gray-600 hover:text-blue-600"}`}
-                  onClick={() => setActiveTab("onboarded")}
+                  onClick={() => { setActiveTab("onboarded"); setOnboardedPage(1); }}
                 >
                   On Boarded ({dummyOnboarded.length})
                 </button>
@@ -1038,57 +1061,106 @@ const handleResetFilters = () => {
                       <p className="text-gray-600">Loading candidate pool...</p>
                     </div>
                   ) : preScreeningCandidates.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left text-gray-600">
-                        <thead className="text-[10px] text-gray-700 uppercase bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Candidate Name</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Mobile Number</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Email ID</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Total Experience</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Company</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">CTC</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">ECTC</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Offer in Hand</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Notice</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Current Location</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Preferred Location</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Availability for Interview</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Schedule Interview</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {preScreeningCandidates.map((candidate) => (
-                            <tr key={candidate.candidate_id} className="bg-white border-b hover:bg-gray-50">
-                              <td className="px-2 py-1.5 text-xs">{candidate.candidate_name}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.mobile_number}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.email_id}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.total_experience}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.company}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.ctc}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.ectc}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.offer_in_hand}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.notice}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.current_location}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.preferred_location}</td>
-                              <td className="px-2 py-1.5 text-xs">{candidate.availability_for_interview}</td>
-                              <td className="px-2 py-1.5 text-xs">
-                                <Button
-                                  size="sm"
-                                  className="bg-white border border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 transition-colors py-1 px-2"
-                                  onClick={() => handleScheduleInterview({
-                                    ...candidate,
-                                    name: candidate.candidate_name,
-                                    profile_id: candidate.candidate_id,
-                                  })}
-                                >
-                                  <Calendar className="w-3 h-3 mr-1" /> Schedule
-                                </Button>
-                              </td>
+                    <div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left text-gray-600">
+                          <thead className="text-[10px] text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Candidate Name</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Mobile Number</th>
+                              <th scope="col" className="px-2 py-1 text-[10px] w-28">Email ID</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Total Experience</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Company</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">CTC</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">ECTC</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Offer in Hand</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Notice</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Current Location</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Preferred Location</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Availability for Interview</th>
+                              <th scope="col" className="px-2 py-1 w-10">
+                                <img 
+                                  src="https://logosdown.com/wp-content/uploads/2023/08/excel-logo-0-2048x2048-1-1536x1536.png" 
+                                  alt="Excel" 
+                                  className="w-4 h-4 mx-auto" 
+                                />
+                              </th>
+                              <th scope="col" className="px-2 py-1 w-10">
+                                <img 
+                                  src="https://cdn-icons-png.freepik.com/512/12588/12588153.png" 
+                                  alt="Resume" 
+                                  className="w-4 h-4 mx-auto" 
+                                />
+                              </th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Schedule Interview</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {getPaginatedData(preScreeningCandidates, candidatePoolPage).map((candidate) => (
+                              <tr key={candidate.candidate_id + candidate.resume_profile_id} className="bg-white border-b hover:bg-gray-50">
+                                <td className="px-2 py-1.5 text-xs">{candidate.candidate_name}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.mobile_number}</td>
+                                <td className="px-2 py-1.5 text-xs break-all whitespace-normal">{candidate.email_id}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.total_experience}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.company}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.ctc}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.ectc}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.offer_in_hand}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.notice}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.current_location}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.preferred_location}</td>
+                                <td className="px-2 py-1.5 text-xs">{candidate.availability_for_interview}</td>
+                                <td className="px-2 py-1.5 text-xs text-center">
+                                  {candidate.has_excel ? (
+                                    <Check className="w-4 h-4 text-green-500 mx-auto" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mx-auto" />
+                                  )}
+                                </td>
+                                <td className="px-2 py-1.5 text-xs text-center">
+                                  {candidate.has_resume ? (
+                                    <Check className="w-4 h-4 text-green-500 mx-auto" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500 mx-auto" />
+                                  )}
+                                </td>
+                                <td className="px-2 py-1.5 text-xs">
+                                  <Button
+                                    size="sm"
+                                    className="bg-white border border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 transition-colors py-1 px-2"
+                                    onClick={() => handleScheduleInterview(candidate)}
+                                  >
+                                    <Calendar className="w-3 h-3 mr-1" /> Schedule
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-center space-x-4 mt-4">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setCandidatePoolPage(prev => Math.max(prev - 1, 1))}
+                          disabled={candidatePoolPage === 1}
+                          className="w-8 h-8"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-xs text-gray-600">
+                          Page {candidatePoolPage} of {getTotalPages(preScreeningCandidates.length)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setCandidatePoolPage(prev => Math.min(prev + 1, getTotalPages(preScreeningCandidates.length)))}
+                          disabled={candidatePoolPage === getTotalPages(preScreeningCandidates.length)}
+                          className="w-8 h-8"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-12">
@@ -1119,99 +1191,124 @@ const handleResetFilters = () => {
                     </Select>
                   </div>
                   {selectedCampaign.Interview && selectedCampaign.Interview.length > 0 ? (
-                    <div className="overflow-x-hidden">
-                      <table className="w-full text-sm text-left text-gray-600 table-fixed">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                          <tr>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Name</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Status</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Current Round</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Schedule Round</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Comments</th>
-                            <th scope="col" className="px-2 py-1 text-[10px]">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {getCandidateList(selectedCampaign.Interview, selectedCampaign.Interview_Round).map((candidate) => {
-                            const comments = candidateComments[candidate.id] || [];
-                            const latestComment = comments.length > 0 ? comments[comments.length - 1] : null;
-                            return (
-                              <tr key={candidate.id} className="bg-white border-b hover:bg-gray-50">
-                                <td className="px-2 py-1.5">
-                                  <div className="flex flex-col">
-                                    <div className="font-medium text-gray-900 text-xs truncate">{candidate.name}</div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <Select
-                                    value={candidateStatuses[candidate.id] || "Applied"}
-                                    onValueChange={(value) => handleStatusChange(candidate.id, value)}
-                                  >
-                                    <SelectTrigger className="w-full bg-gray-50 border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors">
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white border-gray-200 shadow-lg rounded-md">
-                                      <SelectItem value="Applied" className="text-gray-800 text-xs hover:bg-blue-50">Applied</SelectItem>
-                                      <SelectItem value="In Progress" className="text-gray-800 text-xs hover:bg-purple-50">In Progress</SelectItem>
-                                      <SelectItem value="Selected" className="text-gray-800 text-xs hover:bg-green-50">Selected</SelectItem>
-                                      <SelectItem value="On Hold" className="text-gray-800 text-xs hover:bg-yellow-50">On Hold</SelectItem>
-                                      <SelectItem value="Rejected" className="text-gray-800 text-xs hover:bg-red-50">Rejected</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <Badge className={`${getCurrentRoundColor(candidate.currentRound)} font-medium rounded-md px-2 py-0.5 text-xs truncate`}>
-                                    {candidate.currentRound}
-                                  </Badge>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <Button
-                                    size="sm"
-                                    className="bg-white border border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 transition-colors py-0.5 px-1.5"
-                                    onClick={() => handleScheduleInterview(candidate)}
-                                  >
-                                    <Calendar className="w-3 h-3 mr-0.5" /> Schedule
-                                  </Button>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <div className="flex items-center justify-between">
-                                    {latestComment ? (
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center space-x-2">
-                                          <p className="text-xs text-gray-500 truncate">{latestComment.author}</p>
-                                          <Badge className={getJobTitleColor(latestComment.jobTitle)}>{latestComment.jobTitle}</Badge>
+                    <div>
+                      <div className="overflow-x-hidden">
+                        <table className="w-full text-sm text-left text-gray-600 table-fixed">
+                          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Name</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Status</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Current Round</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Schedule Round</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Comments</th>
+                              <th scope="col" className="px-2 py-1 text-[10px]">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getPaginatedData(getCandidateList(selectedCampaign.Interview, selectedCampaign.Interview_Round), interviewStagePage).map((candidate) => {
+                              const comments = candidateComments[candidate.id] || [];
+                              const latestComment = comments.length > 0 ? comments[comments.length - 1] : null;
+                              return (
+                                <tr key={candidate.id} className="bg-white border-b hover:bg-gray-50">
+                                  <td className="px-2 py-1.5">
+                                    <div className="flex flex-col">
+                                      <div className="font-medium text-gray-900 text-xs truncate">{candidate.name}</div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <Select
+                                      value={candidateStatuses[candidate.id] || "Applied"}
+                                      onValueChange={(value) => handleStatusChange(candidate.id, value)}
+                                    >
+                                      <SelectTrigger className="w-full bg-gray-50 border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 transition-colors">
+                                        <SelectValue placeholder="Select status" />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white border-gray-200 shadow-lg rounded-md">
+                                        <SelectItem value="Applied" className="text-gray-800 text-xs hover:bg-blue-50">Applied</SelectItem>
+                                        <SelectItem value="In Progress" className="text-gray-800 text-xs hover:bg-purple-50">In Progress</SelectItem>
+                                        <SelectItem value="Selected" className="text-gray-800 text-xs hover:bg-green-50">Selected</SelectItem>
+                                        <SelectItem value="On Hold" className="text-gray-800 text-xs hover:bg-yellow-50">On Hold</SelectItem>
+                                        <SelectItem value="Rejected" className="text-gray-800 text-xs hover:bg-red-50">Rejected</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <Badge className={`${getCurrentRoundColor(candidate.currentRound)} font-medium rounded-md px-2 py-0.5 text-xs truncate`}>
+                                      {candidate.currentRound}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <Button
+                                      size="sm"
+                                      className="bg-white border border-gray-300 text-gray-800 text-xs font-medium rounded-md shadow-sm hover:bg-gray-100 transition-colors py-0.5 px-1.5"
+                                      onClick={() => handleScheduleInterview(candidate)}
+                                    >
+                                      <Calendar className="w-3 h-3 mr-0.5" /> Schedule
+                                    </Button>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <div className="flex items-center justify-between">
+                                      {latestComment ? (
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center space-x-2">
+                                            <p className="text-xs text-gray-500 truncate">{latestComment.author}</p>
+                                            <Badge className={getJobTitleColor(latestComment.jobTitle)}>{latestComment.jobTitle}</Badge>
+                                          </div>
+                                          <p className="text-sm text-gray-700 truncate">{latestComment.text}</p>
                                         </div>
-                                        <p className="text-sm text-gray-700 truncate">{latestComment.text}</p>
-                                      </div>
-                                    ) : (
-                                      <p className="text-sm text-gray-400 italic flex-1">No comments yet</p>
-                                    )}
+                                      ) : (
+                                        <p className="text-sm text-gray-400 italic flex-1">No comments yet</p>
+                                      )}
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        onClick={() => handleViewComments(candidate)} 
+                                        className="flex items-center text-xs"
+                                      >
+                                        <MessageSquare className="w-3 h-3 mr-1" />
+                                        {comments.length}
+                                      </Button>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2">
                                     <Button 
                                       size="sm" 
-                                      variant="ghost" 
-                                      onClick={() => handleViewComments(candidate)} 
-                                      className="flex items-center text-xs"
+                                      variant="outline" 
+                                      onClick={() => setSelectedCandidate(candidate)} 
+                                      className="w-full h-6 text-xs px-2"
                                     >
-                                      <MessageSquare className="w-3 h-3 mr-1" />
-                                      {comments.length}
+                                      <Eye className="w-2.5 h-2.5 mr-1" /> View
                                     </Button>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2">
-                                  <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => setSelectedCandidate(candidate)} 
-                                    className="w-full h-6 text-xs px-2"
-                                  >
-                                    <Eye className="w-2.5 h-2.5 mr-1" /> View
-                                  </Button>
-                                </td>
+                                  </td>
                                 </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex items-center justify-center space-x-4 mt-4">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setInterviewStagePage(prev => Math.max(prev - 1, 1))}
+                          disabled={interviewStagePage === 1}
+                          className="w-8 h-8"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-xs text-gray-600">
+                          Page {interviewStagePage} of {getTotalPages(getCandidateList(selectedCampaign?.Interview, selectedCampaign?.Interview_Round).length)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setInterviewStagePage(prev => Math.min(prev + 1, getTotalPages(getCandidateList(selectedCampaign?.Interview, selectedCampaign?.Interview_Round).length)))}
+                          disabled={interviewStagePage === getTotalPages(getCandidateList(selectedCampaign?.Interview, selectedCampaign?.Interview_Round).length)}
+                          className="w-8 h-8"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-12">
@@ -1241,29 +1338,54 @@ const handleResetFilters = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-600">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3">Name</th>
-                          <th scope="col" className="px-6 py-3">Email</th>
-                          <th scope="col" className="px-6 py-3">Onboard Date</th>
-                          <th scope="col" className="px-6 py-3">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dummyOnboarded.map((candidate) => (
-                          <tr key={candidate.id} className="bg-white border-b hover:bg-gray-50">
-                            <td className="px-6 py-4">{candidate.name}</td>
-                            <td className="px-6 py-4">{candidate.email}</td>
-                            <td className="px-6 py-4">{candidate.onboardDate}</td>
-                            <td className="px-6 py-4">
-                              <Badge className={getCandidateStatusColor(candidate.status)}>{candidate.status}</Badge>
-                            </td>
+                  <div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left text-gray-600">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                          <tr>
+                            <th scope="col" className="px-6 py-3">Name</th>
+                            <th scope="col" className="px-6 py-3">Email</th>
+                            <th scope="col" className="px-6 py-3">Onboard Date</th>
+                            <th scope="col" className="px-6 py-3">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {getPaginatedData(dummyOnboarded, onboardedPage).map((candidate) => (
+                            <tr key={candidate.id} className="bg-white border-b hover:bg-gray-50">
+                              <td className="px-6 py-4">{candidate.name}</td>
+                              <td className="px-6 py-4">{candidate.email}</td>
+                              <td className="px-6 py-4">{candidate.onboardDate}</td>
+                              <td className="px-6 py-4">
+                                <Badge className={getCandidateStatusColor(candidate.status)}>{candidate.status}</Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex items-center justify-center space-x-4 mt-4">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setOnboardedPage(prev => Math.max(prev - 1, 1))}
+                        disabled={onboardedPage === 1}
+                        className="w-8 h-8"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <span className="text-xs text-gray-600">
+                        Page {onboardedPage} of {getTotalPages(dummyOnboarded.length)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setOnboardedPage(prev => Math.min(prev + 1, getTotalPages(dummyOnboarded.length)))}
+                        disabled={onboardedPage === getTotalPages(dummyOnboarded.length)}
+                        className="w-8 h-8"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

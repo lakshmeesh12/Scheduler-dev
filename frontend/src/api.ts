@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { AxiosRequestConfig } from "axios"; // should work in v1.6+
 
-
 const API_BASE_URL = 'http://localhost:8000'; // Update if your backend runs on a different URL/port
 const NODE_API_BASE_URL = 'http://localhost:3001';
 
@@ -86,18 +85,21 @@ export interface InterviewRoundTimeSlot {
   availableMembers: string[];
 }
 
-// export interface InterviewRoundData {
-//   id: string;
-//   roundNumber: number;
-//   status: 'draft' | 'scheduled' | 'completed';
-//   panel: PanelMember[];
-//   details: InterviewDetails | null;
-//   selectedTimeSlot: InterviewRoundTimeSlot | null;
-//   schedulingOption: 'direct' | 'candidate_choice' | null;
-//   candidateId: string;
-//   sessionId: string | null;
-//   createdAt?: string;
-// }
+export interface InterviewRoundData {
+  id: string;
+  roundNumber: number;
+  status: 'draft' | 'scheduled' | 'completed';
+  panel: PanelMember[];
+  details: InterviewDetails | null;
+  selectedTimeSlot: InterviewRoundTimeSlot | null;
+  schedulingOption: 'direct' | 'candidate_choice' | null;
+  candidateId: string;
+  campaignId: string;
+  clientId: string;
+  sessionId: string | null;
+  createdAt?: string;
+  name: string;
+}
 
 export interface InterviewRoundResponse {
   message: string;
@@ -109,6 +111,55 @@ export interface ApiCandidate {
   name: string;
   email?: string;
   recent_designation?: string;
+}
+
+export interface FileUploadResponse {
+  session_id: string;
+  columns: string[];
+}
+
+export interface ColumnDataResponse {
+  data: Array<{ [key: string]: any }>;
+}
+
+// Interfaces for retrieve-excel-with-resume-status endpoint
+export interface ExcelRecordWithResumeStatus {
+  candidate_id: string;
+  candidate_name: string;
+  mobile_number: string;
+  email_id: string;
+  total_experience: string;
+  company: string;
+  ctc: string;
+  ectc: string;
+  offer_in_hand: string;
+  notice: string;
+  current_location: string;
+  preferred_location: string;
+  availability_for_interview: string;
+  created_at: string;
+  has_resume: boolean;
+  resume_profile_id: string | null;
+}
+
+export interface ResumeWithExcelStatus {
+  profile_id: string;
+  email: string;
+  name: string | null;
+  created_at: string;
+  has_excel_record: boolean;
+  excel_candidate_id: string | null;
+}
+
+export interface ExcelResumeResponse {
+  message: string;
+  campaign_id: string;
+  excel_records: ExcelRecordWithResumeStatus[];
+  excel_record_count: number;
+  resumes: ResumeWithExcelStatus[];
+  resume_count: number;
+  timestamp: string;
+  execution_time_ms: number;
 }
 
 const apiClient = axios.create({
@@ -134,14 +185,6 @@ export const fetchUsers = async (): Promise<User[]> => {
   }
 };
 
-export interface FileUploadResponse {
-  session_id: string;
-  columns: string[];
-}
-
-export interface ColumnDataResponse {
-  data: Array<{ [key: string]: any }>;
-}
 export const uploadFileForColumns = async (file: File): Promise<FileUploadResponse> => {
   try {
     const formData = new FormData();
@@ -226,7 +269,6 @@ export const fetchAllAvailableSlots = async (sessionId: string): Promise<Availab
   }
 };
 
-
 export interface PanelEventsResponse {
   users: {user_id: string; display_name: string}[];
   events: Record<string, {start: string; end: string; subject: string}[]>;
@@ -261,6 +303,18 @@ export const checkCustomSlot = async (sessionId: string, start: string, end: str
       throw new Error((error.response.data as ApiError).error || 'Failed to check custom slot');
     }
     throw new Error('Network error while checking custom slot');
+  }
+};
+
+export const fetchExcelWithResumeStatus = async (campaignId: string): Promise<ExcelResumeResponse> => {
+  try {
+    const response = await apiClient.get<ExcelResumeResponse>(`/retrieve-excel-with-resume-status/${campaignId}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error((error.response.data as ApiError).error || 'Failed to fetch Excel records and resumes with status');
+    }
+    throw new Error('Network error while fetching Excel records and resumes with status');
   }
 };
 
@@ -498,14 +552,54 @@ const fetchWithToken = async (url: string, options: RequestInit = {}) => {
   }
 };
 
-export const fetchMatchingResumes = async (formData: FormData): Promise<MatchingResponse> => {
-  return fetchWithToken(`${BASE_URL}/find-match`, {
+interface SkillMatchDetails {
+  matched_skills: string[];
+  missing_skills: string[];
+  total_matched: number;
+  total_required: number;
+  match_percentage: number;
+}
+
+interface AggregatedScore {
+  resume_name: string;
+  profile_id: string;
+  aggregated_score: number;
+  score_breakdown: {
+    primary_vs_primary: number;
+    primary_vs_secondary: number;
+    secondary_vs_primary: number;
+    secondary_vs_secondary: number;
+  };
+  vector_score: number;
+  primary_vs_primary: SkillMatchDetails;
+  secondary_vs_secondary: SkillMatchDetails;
+  rank: number;
+}
+
+interface MatchingResponse {
+  jd_text: string;
+  job_title: string;
+  total_resumes_processed: number;
+  matching_results: AggregatedScore[];
+  timestamp: string;
+  execution_time_ms: number;
+}
+
+const fetchMatchingResumes = async (campaignId: string, jobDescription: string, clientId?: string): Promise<MatchingResponse> => {
+  const formData = new FormData();
+  formData.append('job_description', jobDescription);
+  if (clientId) {
+    formData.append('client_id', clientId);
+  }
+
+  return fetchWithToken(`${BASE_URL}/find-match/${campaignId}`, {
     method: "POST",
     body: formData,
   });
 };
 
 export type { MatchingResponse, AggregatedScore, SkillMatchDetails };
+export { fetchMatchingResumes };
 
 interface ScheduleEventRequest {
   slot: {
@@ -661,8 +755,6 @@ export const fetchDrivesByClient = async (clientId: string): Promise<Drive[]> =>
   }
 };
 
-
-
 interface UploadResumeResponse {
   message: string;
   session_id: string;
@@ -684,6 +776,8 @@ interface UploadResumeResponse {
 
 const uploadResumes = async (
   files: File[],
+  campaignId: string | null,
+  clientId: string | null,
   onProgress?: (progress: number, fileName: string) => void
 ): Promise<UploadResumeResponse> => {
   const formData = new FormData();
@@ -691,7 +785,13 @@ const uploadResumes = async (
     formData.append('files', file);
   });
 
-  // Simulate progress updates (since server-side streaming isn't implemented)
+  // Construct the URL with query parameters
+  const url = new URL(`${BASE_URL}/upload-resumes-v2/${campaignId || ''}`);
+  if (clientId) {
+    url.searchParams.append('client_id', clientId);
+  }
+
+  // Simulate progress updates
   const totalFiles = files.length;
   let processedFiles = 0;
 
@@ -710,7 +810,7 @@ const uploadResumes = async (
   const progressPromise = simulateProgress();
 
   try {
-    const response = await fetchWithToken(`${BASE_URL}/upload-resumes`, {
+    const response = await fetchWithToken(url.toString(), {
       method: 'POST',
       body: formData,
     });
@@ -727,6 +827,9 @@ const uploadResumes = async (
     throw error;
   }
 };
+
+
+
 
 interface Employee {
   name: string;

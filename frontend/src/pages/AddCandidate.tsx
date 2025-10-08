@@ -63,56 +63,63 @@ const AddCandidate = () => {
   };
 
   const handleFileUpload = async (files: FileList) => {
-    const fileArray = Array.from(files).filter(file => 
-      file.type === "application/pdf" || file.name.toLowerCase().endsWith(".docx")
-    );
-    
-    if (fileArray.length === 0) {
+  const fileArray = Array.from(files).filter(file => 
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".docx")
+  );
+  
+  if (fileArray.length === 0) {
+    toast({
+      title: "Invalid file type",
+      description: "Please upload PDF or DOCX files only.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  if (!campaignId) {
+    toast({
+      title: "Error",
+      description: "Campaign ID is missing. Please ensure you're accessing this page from a valid campaign.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setIsLoading(true);
+  setUploadedFiles(prev => [...prev, ...fileArray]);
+
+  try {
+    const response = await uploadResumes(fileArray, campaignId, null, (progress, fileName) => {
+      setUploadProgress(progress);
+      setCurrentFile(fileName);
+    });
+
+    if (response.message.includes("successfully")) {
       toast({
-        title: "Invalid file type",
-        description: "Please upload PDF or DOCX files only.",
+        title: "Resumes uploaded successfully",
+        description: `Processed ${response.stats.success_count} out of ${response.stats.total_count} files in ${response.stats.processing_time.toFixed(2)} seconds.`,
+        className: "bg-green-600 text-white"
+      });
+      navigate(`/candidate-search/${campaignId}`);
+    } else if (response.errors) {
+      toast({
+        title: "Some files failed validation",
+        description: response.errors.map(err => `${err.filename}: ${err.error}`).join("\n"),
         variant: "destructive"
       });
-      return;
     }
-
-    setIsLoading(true);
-    setUploadedFiles(prev => [...prev, ...fileArray]);
-
-    try {
-      const response = await uploadResumes(fileArray, (progress, fileName) => {
-        setUploadProgress(progress);
-        setCurrentFile(fileName);
-      });
-
-      if (response.message.includes("successfully")) {
-        toast({
-          title: "Resumes uploaded successfully",
-          description: `Processed ${response.stats.success_count} out of ${response.stats.total_count} files in ${response.stats.processing_time.toFixed(2)} seconds.`,
-          className: "bg-green-600 text-white"
-        });
-        setUploadedFiles([]);
-        setUploadProgress(0);
-        setCurrentFile("");
-      } else if (response.errors) {
-        toast({
-          title: "Some files failed validation",
-          description: response.errors.map(err => `${err.filename}: ${err.error}`).join("\n"),
-          variant: "destructive"
-        });
-      }
-    } catch (err) {
-      toast({
-        title: "Error uploading resumes",
-        description: err instanceof Error ? err.message : "Failed to process resumes.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-      setUploadProgress(0);
-      setCurrentFile("");
-    }
-  };
+  } catch (err) {
+    toast({
+      title: "Error uploading resumes",
+      description: err instanceof Error ? err.message : "Failed to process resumes.",
+      variant: "destructive"
+    });
+  } finally {
+    setIsLoading(false);
+    setUploadProgress(0);
+    setCurrentFile("");
+  }
+};
 
   const handleExcelUpload = async (file: File) => {
     if (!file.name.endsWith('.xls') && !file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
